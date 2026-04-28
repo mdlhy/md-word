@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaTeX 公式转换器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="title-bar">LaTeX 公式转换器</header>
+  <main>
+    <section id="upload-section">
+      <div id="upload-zone" class="upload-zone">
+        <div class="upload-icon">📄</div>
+        <p class="upload-text">拖拽 .docx 文件到此处，或点击上传</p>
+        <p class="upload-hint">仅支持 .docx 格式</p>
+        <input type="file" id="file-input" accept=".docx" hidden>
+      </div>
+      <div id="loading" class="loading" hidden>
+        <div class="spinner"></div>
+        <p>正在转换...</p>
+      </div>
+      <p id="error-msg" class="error-msg" hidden></p>
+    </section>
+    <section id="results-section" hidden>
+      <div class="stats-summary" id="stats-summary"></div>
+      <div class="stats">
+        <div class="stat-item stat-total">
+          <span class="stat-number" id="stat-total">0</span>
+          <span class="stat-label">总公式</span>
+        </div>
+        <div class="stat-item stat-success">
+          <span class="stat-number" id="stat-success">0</span>
+          <span class="stat-label">成功</span>
+        </div>
+        <div class="stat-item stat-failed">
+          <span class="stat-number" id="stat-failed">0</span>
+          <span class="stat-label">失败</span>
+        </div>
+        <div class="stat-item stat-skipped">
+          <span class="stat-number" id="stat-skipped">0</span>
+          <span class="stat-label">跳过</span>
+        </div>
+      </div>
+      <h2 class="formula-list-title">公式列表</h2>
+      <ul id="formula-list" class="formula-list"></ul>
+      <div class="actions">
+        <button id="download-btn" class="download-btn">⬇ 下载转换后的文件</button>
+        <button id="reset-btn" class="reset-btn">重新上传</button>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">LaTeX 公式转换器 · 本地运行</footer>
+  <script src="app.js"></script>
+</body>
+</html>
