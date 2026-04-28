@@ -43,6 +43,7 @@ async def convert_docx(file: UploadFile = File(...)):
         logger.error(f"Failed to save uploaded file: {e}")
         raise HTTPException(status_code=500, detail="文件保存失败")
 
+    output_path = None
     try:
         from converter.orchestrator import convert_docx as do_convert
 
@@ -53,6 +54,7 @@ async def convert_docx(file: UploadFile = File(...)):
         
         download_id = str(uuid.uuid4())
         _download_store[download_id] = output_path
+        output_path = None  # ownership transferred to store
         
         return JSONResponse({
             "success": True,
@@ -70,18 +72,28 @@ async def convert_docx(file: UploadFile = File(...)):
         })
     except Exception as e:
         logger.error(f"Conversion failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"转换失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="转换失败，请重试")
     finally:
         try:
             os.unlink(input_path)
         except OSError:
             pass
+        if output_path:
+            try:
+                os.unlink(output_path)
+            except OSError:
+                pass
 
 
 @app.get("/api/download/{download_id}")
 async def download_docx(download_id: str):
-    file_path = _download_store.get(download_id)
+    file_path = _download_store.pop(download_id, None)
     if not file_path or not os.path.exists(file_path):
+        if file_path:
+            try:
+                os.unlink(file_path)
+            except OSError:
+                pass
         raise HTTPException(status_code=404, detail="文件不存在或已过期")
     return FileResponse(
         path=file_path,
