@@ -3,19 +3,69 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LaTeX 公式转换器</title>
+  <title>MD→WPS 一键排版</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="title-bar">LaTeX 公式转换器</header>
+  <header class="title-bar">MD→WPS 一键排版</header>
   <main>
     <section id="upload-section">
-      <div id="upload-zone" class="upload-zone">
-        <div class="upload-icon">📄</div>
-        <p class="upload-text">拖拽 .docx 文件到此处，或点击上传</p>
-        <p class="upload-hint">仅支持 .docx 格式</p>
-        <input type="file" id="file-input" accept=".docx" hidden>
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="md">上传 .md</button>
+        <button class="tab-btn" data-tab="repair">上传 .docx 修复</button>
+        <button class="tab-btn" data-tab="convert">上传 .docx 转换</button>
       </div>
+
+      <div id="tab-md" class="tab-content">
+        <div class="md-options">
+          <div class="option-row">
+            <label for="template-select">模板：</label>
+            <select id="template-select">
+              <option value="学术论文">学术论文</option>
+              <option value="课程作业">课程作业</option>
+              <option value="工作文档">工作文档</option>
+            </select>
+          </div>
+          <div class="option-row">
+            <label><input type="checkbox" id="three-line-check"> 三线表</label>
+          </div>
+        </div>
+        <div id="upload-zone-md" class="upload-zone">
+          <div class="upload-icon">📝</div>
+          <p class="upload-text">拖拽 .md 文件到此处，或点击上传</p>
+          <p class="upload-hint">仅支持 .md 格式</p>
+          <input type="file" id="file-input-md" accept=".md" hidden>
+        </div>
+      </div>
+
+      <div id="tab-repair" class="tab-content" style="display:none;">
+        <div class="md-options">
+          <div class="option-row">
+            <label for="template-select-repair">模板：</label>
+            <select id="template-select-repair">
+              <option value="学术论文">学术论文</option>
+              <option value="课程作业">课程作业</option>
+              <option value="工作文档">工作文档</option>
+            </select>
+          </div>
+        </div>
+        <div id="upload-zone-repair" class="upload-zone">
+          <div class="upload-icon">📄</div>
+          <p class="upload-text">拖拽 .docx 文件到此处，或点击上传</p>
+          <p class="upload-hint">仅支持 .docx 格式</p>
+          <input type="file" id="file-input-repair" accept=".docx" hidden>
+        </div>
+      </div>
+
+      <div id="tab-convert" class="tab-content" style="display:none;">
+        <div id="upload-zone" class="upload-zone">
+          <div class="upload-icon">📄</div>
+          <p class="upload-text">拖拽 .docx 文件到此处，或点击上传</p>
+          <p class="upload-hint">仅支持 .docx 格式</p>
+          <input type="file" id="file-input" accept=".docx" hidden>
+        </div>
+      </div>
+
       <div id="loading" class="loading" hidden>
         <div class="spinner"></div>
         <p>正在转换...</p>
@@ -42,6 +92,11 @@
           <span class="stat-label">跳过</span>
         </div>
       </div>
+      <div id="compat-panel" style="display:none;">
+        <h3>WPS 兼容性检测</h3>
+        <div id="compat-summary"></div>
+        <div id="compat-items"></div>
+      </div>
       <h2 class="formula-list-title">公式列表</h2>
       <ul id="formula-list" class="formula-list"></ul>
       <div class="actions">
@@ -50,7 +105,7 @@
       </div>
     </section>
   </main>
-  <footer class="footer">LaTeX 公式转换器 · 本地运行</footer>
+  <footer class="footer">MD→WPS 一键排版 · 本地运行</footer>
   <script src="app.js"></script>
 </body>
 </html>
