@@ -1,9 +1,15 @@
+"""DOCX repair pipeline: detect and fix formatting issues in .docx files.
+
+Applies template formatting (fonts, sizes, spacing, margins) plus heuristic
+detection of structural issues (bare # headings, unstyled lists, etc.).
+"""
+
 import re
 from docx import Document
-from docx.shared import Cm
+from docx.shared import Cm, Pt
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 
 from converter.compat_report import CompatItem, CompatReport, generate_compat_report
 from converter.templates import get_template
@@ -14,14 +20,90 @@ def repair_docx(input_path: str, template_name: str = "academic") -> tuple[Docum
     template_config = get_template(template_name)
     items = []
 
+    _apply_page_margins(doc, template_config)
     items.extend(_fix_headings(doc, template_config))
     items.extend(_fix_lists(doc, template_config))
     items.extend(_fix_tables(doc, template_config))
+    _apply_body_formatting(doc, template_config)
     items.extend(_fix_formulas(doc))
 
     report = generate_compat_report(items)
     return doc, report
 
+
+# ---------------------------------------------------------------------------
+# Page margins
+# ---------------------------------------------------------------------------
+
+def _apply_page_margins(doc: Document, template_config: dict):
+    """Apply template page margins to all sections."""
+    page = template_config.get("page", {})
+    for section in doc.sections:
+        if "margin_top" in page:
+            section.top_margin = Cm(page["margin_top"])
+        if "margin_bottom" in page:
+            section.bottom_margin = Cm(page["margin_bottom"])
+        if "margin_left" in page:
+            section.left_margin = Cm(page["margin_left"])
+        if "margin_right" in page:
+            section.right_margin = Cm(page["margin_right"])
+
+
+# ---------------------------------------------------------------------------
+# Body formatting
+# ---------------------------------------------------------------------------
+
+def _apply_body_formatting(doc: Document, template_config: dict):
+    """Apply template body font/size/spacing to all Normal paragraphs."""
+    body_config = template_config.get("body", {})
+    if not body_config:
+        return
+
+    font_cn = body_config.get("font_cn")
+    font_en = body_config.get("font_en")
+    font_size = body_config.get("size")
+    line_spacing = body_config.get("line_spacing")
+    first_indent = body_config.get("first_indent", 0)
+
+    for para in doc.paragraphs:
+        # Skip headings — they have their own formatting
+        if para.style and para.style.name and para.style.name.startswith("Heading"):
+            continue
+
+        for run in para.runs:
+            if font_en:
+                run.font.name = font_en
+                # Set East Asian font via XML
+                r_elem = run._element
+                rpr = r_elem.find(qn("w:rPr"))
+                if rpr is None:
+                    rpr = OxmlElement("w:rPr")
+                    r_elem.insert(0, rpr)
+                rfonts = rpr.find(qn("w:rFonts"))
+                if rfonts is None:
+                    rfonts = OxmlElement("w:rFonts")
+                    rpr.insert(0, rfonts)
+                if font_cn:
+                    rfonts.set(qn("w:eastAsia"), font_cn)
+
+            if font_size:
+                run.font.size = Pt(font_size)
+
+        # Paragraph-level formatting
+        if line_spacing:
+            pf = para.paragraph_format
+            pf.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
+            pf.line_spacing = line_spacing
+
+        if first_indent and first_indent > 0:
+            # First line indent in chars → convert to cm (1 char ≈ 0.74 cm for 12pt)
+            indent_cm = first_indent * (font_size or 12) * 0.0265
+            para.paragraph_format.first_line_indent = Cm(indent_cm)
+
+
+# ---------------------------------------------------------------------------
+# Heading fixes
+# ---------------------------------------------------------------------------
 
 def _fix_headings(doc, template_config) -> list[CompatItem]:
     items = []
@@ -51,9 +133,9 @@ def _fix_headings(doc, template_config) -> list[CompatItem]:
             else:
                 para.add_run(title_text)
 
+            # Apply template heading formatting
             heading_config = template_config.get(f"heading{level}", {})
-            if heading_config.get("center"):
-                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            _apply_heading_formatting(para, heading_config)
 
             items.append(CompatItem(
                 element_type="heading",
@@ -63,8 +145,55 @@ def _fix_headings(doc, template_config) -> list[CompatItem]:
         except KeyError:
             pass
 
+    # Also format existing headings with template styles
+    for para in doc.paragraphs:
+        if not (para.style and para.style.name and para.style.name.startswith("Heading")):
+            continue
+        # Extract level from style name
+        try:
+            level = int(para.style.name.split()[-1])
+        except (ValueError, IndexError):
+            continue
+        if level > 3:
+            continue
+        heading_config = template_config.get(f"heading{level}", {})
+        _apply_heading_formatting(para, heading_config)
+
     return items
 
+
+def _apply_heading_formatting(para, heading_config: dict):
+    """Apply template heading font/size/bold/center to a heading paragraph."""
+    font_cn = heading_config.get("font_cn")
+    font_en = heading_config.get("font_en")
+
+    for run in para.runs:
+        if font_en:
+            run.font.name = font_en
+            r_elem = run._element
+            rpr = r_elem.find(qn("w:rPr"))
+            if rpr is None:
+                rpr = OxmlElement("w:rPr")
+                r_elem.insert(0, rpr)
+            rfonts = rpr.find(qn("w:rFonts"))
+            if rfonts is None:
+                rfonts = OxmlElement("w:rFonts")
+                rpr.insert(0, rfonts)
+            if font_cn:
+                rfonts.set(qn("w:eastAsia"), font_cn)
+
+        if heading_config.get("size"):
+            run.font.size = Pt(heading_config["size"])
+        if heading_config.get("bold"):
+            run.font.bold = True
+
+    if heading_config.get("center"):
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+
+# ---------------------------------------------------------------------------
+# List fixes
+# ---------------------------------------------------------------------------
 
 def _fix_lists(doc, template_config) -> list[CompatItem]:
     items = []
@@ -117,6 +246,10 @@ def _fix_lists(doc, template_config) -> list[CompatItem]:
     return items
 
 
+# ---------------------------------------------------------------------------
+# Table fixes
+# ---------------------------------------------------------------------------
+
 def _fix_tables(doc, template_config) -> list[CompatItem]:
     items = []
 
@@ -156,6 +289,10 @@ def _fix_tables(doc, template_config) -> list[CompatItem]:
 
     return items
 
+
+# ---------------------------------------------------------------------------
+# Formula fixes
+# ---------------------------------------------------------------------------
 
 def _fix_formulas(doc) -> list[CompatItem]:
     items = []
