@@ -52,7 +52,7 @@ def _is_followed_by_currency_char(text: str, pos: int) -> bool:
 _BLOCK_DOLLAR_PATTERN = r"^ {0,3}\$\$[ \t]*\n(?P<block_math_text>[\s\S]+?)\n\$\$[ \t]*$"
 _BLOCK_BRACKET_PATTERN = r"^ {0,3}\\\[[ \t]*\n(?P<block_math_bracket_text>[\s\S]+?)\n\\[][ \t]*$"
 
-_INLINE_DOUBLE_DOLLAR_PATTERN = r"(?<!\\)\$\$(?!\s)(?P<inline_math_dd_text>.+?)(?<!\s)\$\$"
+_INLINE_DOUBLE_DOLLAR_PATTERN = r"(?<!\\)\$\$(?P<inline_math_dd_text>[\s\S]+?)\$\$"
 _INLINE_DOLLAR_PATTERN = r"(?<!\\)\$(?!\s)(?P<inline_math_text>.+?)(?<!\s)\$"
 _INLINE_PAREN_PATTERN = r"\\\((?P<inline_math_paren_text>.+?)\\\)"
 _INLINE_BRACKET_PATTERN = r"\\\[(?P<inline_math_bracket_text>.+?)\\\]"
