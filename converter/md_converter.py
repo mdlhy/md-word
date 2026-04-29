@@ -58,7 +58,9 @@ def _add_math_to_paragraph(paragraph, latex: str, display: bool):
                 paragraph._p.append(copy.deepcopy(elem))
     except Exception:
         logger.warning(f"Math conversion failed for: {latex[:50]}")
-        run = paragraph.add_run(latex)
+        safe_text = latex.encode('utf-8', errors='replace').decode('utf-8')
+        safe_text = ''.join(c for c in safe_text if ord(c) >= 32 or c in '\t\n')
+        run = paragraph.add_run(safe_text)
         run.font.italic = True
 
 
