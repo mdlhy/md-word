@@ -24,9 +24,14 @@
       <div id="options-panel" class="options-panel" style="display:none;">
         <div class="file-info">
           <span id="file-icon" class="file-icon">📝</span>
-          <span id="file-name" class="file-name"></span>
+          <span class="file-text">
+            <span id="file-name" class="file-name"></span>
+            <span id="file-meta" class="file-meta"></span>
+          </span>
           <button id="file-remove" class="file-remove" title="移除文件">✕</button>
         </div>
+
+        <div id="process-summary" class="process-summary"></div>
 
         <div class="options-body">
           <div class="option-row">
@@ -55,7 +60,7 @@
           </div>
         </div>
 
-        <button id="start-btn" class="start-btn">开始转换</button>
+        <button id="start-btn" class="start-btn">开始处理</button>
       </div>
 
       <div id="loading" class="loading" hidden>
@@ -67,19 +72,50 @@
 
     <!-- ===== Results Section ===== -->
     <section id="results-section" hidden>
+      <div class="result-header">
+        <div>
+          <h1 id="result-title" class="result-title">处理完成</h1>
+          <p id="result-meta" class="result-meta"></p>
+        </div>
+      </div>
+
       <div class="stats-summary" id="stats-summary"></div>
 
+      <div id="stats-grid" class="stats">
+        <div class="stat-item stat-total">
+          <span id="stat-total" class="stat-number">0</span>
+          <span id="stat-total-label" class="stat-label">总数</span>
+        </div>
+        <div class="stat-item stat-success">
+          <span id="stat-success" class="stat-number">0</span>
+          <span id="stat-success-label" class="stat-label">成功</span>
+        </div>
+        <div class="stat-item stat-failed">
+          <span id="stat-failed" class="stat-number">0</span>
+          <span id="stat-failed-label" class="stat-label">失败</span>
+        </div>
+        <div class="stat-item stat-skipped">
+          <span id="stat-skipped" class="stat-number">0</span>
+          <span id="stat-skipped-label" class="stat-label">跳过</span>
+        </div>
+      </div>
+
       <div id="compat-panel" style="display:none;">
-        <h3>WPS 兼容性检测</h3>
+        <div class="compat-header">
+          <h3>WPS 兼容性检测</h3>
+          <button id="compat-toggle" class="toggle-all-btn" type="button">展开详情</button>
+        </div>
         <div id="compat-summary"></div>
         <div id="compat-items"></div>
       </div>
 
-      <div class="formula-list-header">
-        <h2 class="formula-list-title">公式列表</h2>
-        <button id="toggle-all-formulas" class="toggle-all-btn" style="display:none;">全部展开</button>
+      <div id="formula-panel" style="display:none;">
+        <div class="formula-list-header">
+          <h2 class="formula-list-title">公式列表</h2>
+          <button id="toggle-all-formulas" class="toggle-all-btn" style="display:none;">全部展开</button>
+        </div>
+        <ul id="formula-list" class="formula-list"></ul>
       </div>
-      <ul id="formula-list" class="formula-list"></ul>
 
       <div class="actions">
         <button id="download-btn" class="download-btn">⬇ 下载转换后的文件</button>

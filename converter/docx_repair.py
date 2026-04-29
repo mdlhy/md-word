@@ -6,7 +6,7 @@ detection of structural issues (bare # headings, unstyled lists, etc.).
 
 import re
 from docx import Document
-from docx.shared import Cm, Pt
+from docx.shared import Cm, Pt, RGBColor
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
@@ -186,6 +186,7 @@ def _apply_heading_formatting(para, heading_config: dict):
             run.font.size = Pt(heading_config["size"])
         if heading_config.get("bold"):
             run.font.bold = True
+        run.font.color.rgb = RGBColor(0, 0, 0)
 
     if heading_config.get("center"):
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER

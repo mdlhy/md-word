@@ -17,6 +17,7 @@ class FormulaDetail:
     latex: str
     status: Literal["converted", "failed", "skipped"]
     display: bool
+    page: int | None = None
 
 
 @dataclass

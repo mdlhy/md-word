@@ -4,3 +4,7 @@ __pycache__/
 .sisyphus/
 *.tmp
 .DS_Store
+node_modules/
+package-lock.json
+产品改进建议*
+MD_to_WPS_*

@@ -65,7 +65,7 @@ async def convert_docx(file: UploadFile = File(...)):
                 "skipped": result.skipped,
             },
             "formulas": [
-                {"latex": f.latex, "status": f.status, "display": f.display}
+                {"latex": f.latex, "status": f.status, "display": f.display, "page": f.page}
                 for f in result.details
             ],
             "download_id": download_id,

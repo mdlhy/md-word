@@ -1,5 +1,5 @@
 from docx import Document
-from docx.shared import Pt
+from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
@@ -51,6 +51,7 @@ def add_heading(doc: Document, token: Token, template_config: dict):
             run.font.size = Pt(heading_config["size"])
         if heading_config.get("bold"):
             run.font.bold = True
+        run.font.color.rgb = RGBColor(0, 0, 0)
     
     if heading_config.get("center"):
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER

@@ -15,7 +15,7 @@ NS_W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
 NS_M = '{http://schemas.openxmlformats.org/officeDocument/2006/math}'
 
 
-def replace_formulas_in_paragraph(paragraph: Paragraph) -> ReplaceResult:
+def replace_formulas_in_paragraph(paragraph: Paragraph, page: int | None = None) -> ReplaceResult:
     """Find and replace LaTeX formulas in a paragraph with OMML elements.
     
     Uses the full-rebuild approach: concatenate all run text, find formulas,
@@ -71,7 +71,7 @@ def replace_formulas_in_paragraph(paragraph: Paragraph) -> ReplaceResult:
                     p_element.append(elem)
                 result.converted += 1
                 result.details.append(FormulaDetail(
-                    latex=latex, status="converted", display=display
+                    latex=latex, status="converted", display=display, page=page
                 ))
             else:
                 delimiter = '$$' if display else '$'
@@ -80,7 +80,7 @@ def replace_formulas_in_paragraph(paragraph: Paragraph) -> ReplaceResult:
                 p_element.append(r)
                 result.failed += 1
                 result.details.append(FormulaDetail(
-                    latex=latex, status="failed", display=display
+                    latex=latex, status="failed", display=display, page=page
                 ))
     
     return result

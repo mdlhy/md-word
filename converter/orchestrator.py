@@ -3,7 +3,7 @@ import logging
 
 from docx import Document
 
-from .models import ConvertResult, FormulaDetail
+from .models import ConvertResult
 from .walker import walk_all_paragraphs
 from .replacer import replace_formulas_in_paragraph
 
@@ -23,9 +23,19 @@ def convert_docx_in_memory(doc: Document) -> ConvertResult:
     """
     result = ConvertResult()
     
-    for paragraph in walk_all_paragraphs(doc):
+    paragraphs = list(walk_all_paragraphs(doc))
+    has_page_markers = any(getattr(paragraph, "contains_page_break", False) for paragraph in paragraphs)
+    current_page = 1
+
+    for paragraph in paragraphs:
         try:
-            replace_result = replace_formulas_in_paragraph(paragraph)
+            breaks = list(getattr(paragraph, "rendered_page_breaks", []))
+            leading_breaks = sum(
+                1 for page_break in breaks
+                if page_break.preceding_paragraph_fragment is None
+            )
+            page = current_page + leading_breaks if has_page_markers else None
+            replace_result = replace_formulas_in_paragraph(paragraph, page=page)
             result.total += replace_result.total
             result.converted += replace_result.converted
             result.failed += replace_result.failed
@@ -34,6 +44,9 @@ def convert_docx_in_memory(doc: Document) -> ConvertResult:
         except Exception as e:
             logger.error(f"Failed to process paragraph: {e}", exc_info=True)
             continue
+
+        if has_page_markers:
+            current_page += len(breaks)
     
     logger.info(f"In-memory conversion complete: {result.converted}/{result.total} converted, "
                 f"{result.failed} failed, {result.skipped} skipped")
@@ -52,20 +65,6 @@ def convert_docx(input_path: str, output_path: str) -> ConvertResult:
     """
     doc = Document(input_path)
     result = convert_docx_in_memory(doc)
-    doc.save(output_path)
-    
-    for paragraph in walk_all_paragraphs(doc):
-        try:
-            replace_result = replace_formulas_in_paragraph(paragraph)
-            result.total += replace_result.total
-            result.converted += replace_result.converted
-            result.failed += replace_result.failed
-            result.skipped += replace_result.skipped
-            result.details.extend(replace_result.details)
-        except Exception as e:
-            logger.error(f"Failed to process paragraph: {e}", exc_info=True)
-            continue
-    
     doc.save(output_path)
     logger.info(f"Conversion complete: {result.converted}/{result.total} converted, "
                 f"{result.failed} failed, {result.skipped} skipped")
