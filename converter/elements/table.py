@@ -4,6 +4,7 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
 from converter.md_parser import Token
+from converter.format_units import parse_unit
 
 
 def _set_cell_border(cell, **kwargs):
@@ -168,8 +169,8 @@ def add_table(doc: Document, token: Token, template_config: dict, three_line: bo
     
     # Calculate column width
     page_config = template_config.get("page", {})
-    margin_left = page_config.get("margin_left", 3.17)
-    margin_right = page_config.get("margin_right", 3.17)
+    margin_left = parse_unit(page_config.get("margin_left", "3.17厘米"))[0]
+    margin_right = parse_unit(page_config.get("margin_right", "3.17厘米"))[0]
     page_width = 21.0  # A4 width in cm
     available_width = page_width - margin_left - margin_right
     col_width = Cm(available_width / num_cols)

@@ -5,6 +5,7 @@ from docx.oxml import OxmlElement
 from docx.enum.text import WD_LINE_SPACING
 
 from converter.md_parser import Token
+from converter.format_units import to_length, font_size_to_pt
 
 
 def add_blockquote(doc: Document, token: Token, template_config: dict):
@@ -15,14 +16,17 @@ def add_blockquote(doc: Document, token: Token, template_config: dict):
     - Each line is an independent paragraph sharing indent and border
     """
     quote_config = template_config.get("quote", {})
-    indent_cm = quote_config.get("indent", 2)
+    indent_value = quote_config.get("indent", "2字符")
     border_color = quote_config.get("border_color", "CCCCCC")
+    
+    body_config = template_config.get("body", {})
+    body_size_pt = font_size_to_pt(body_config.get("size", "小四"))
     
     paragraphs = []
     
     def add_quote_paragraph(text: str):
         p = doc.add_paragraph()
-        p.paragraph_format.left_indent = Cm(indent_cm)
+        p.paragraph_format.left_indent = to_length(indent_value, font_size_pt=body_size_pt)
         p.paragraph_format.space_after = Pt(4)
         
         pPr = p._p.get_or_add_pPr()
@@ -57,9 +61,9 @@ def add_blockquote(doc: Document, token: Token, template_config: dict):
         elif child.type == "text":
             add_quote_paragraph(child.content)
         elif child.type == "blockquote":
-            nested_indent = indent_cm + 2
+            nested_indent_cm = to_length(indent_value, font_size_pt=body_size_pt).cm + 2
             nested_config = dict(template_config)
-            nested_config["quote"] = dict(quote_config, indent=nested_indent)
+            nested_config["quote"] = dict(quote_config, indent=f"{nested_indent_cm}厘米")
             nested_ps = add_blockquote(doc, child, nested_config)
             paragraphs.extend(nested_ps)
     

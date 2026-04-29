@@ -13,6 +13,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 
 from converter.compat_report import CompatItem, CompatReport, generate_compat_report
 from converter.templates import get_template
+from converter.format_units import to_pt, to_length, to_spacing, font_size_to_pt, to_alignment, parse_unit
 
 
 def repair_docx(input_path: str, template_name: str = "academic") -> tuple[Document, CompatReport]:
@@ -40,13 +41,13 @@ def _apply_page_margins(doc: Document, template_config: dict):
     page = template_config.get("page", {})
     for section in doc.sections:
         if "margin_top" in page:
-            section.top_margin = Cm(page["margin_top"])
+            section.top_margin = to_length(page["margin_top"])
         if "margin_bottom" in page:
-            section.bottom_margin = Cm(page["margin_bottom"])
+            section.bottom_margin = to_length(page["margin_bottom"])
         if "margin_left" in page:
-            section.left_margin = Cm(page["margin_left"])
+            section.left_margin = to_length(page["margin_left"])
         if "margin_right" in page:
-            section.right_margin = Cm(page["margin_right"])
+            section.right_margin = to_length(page["margin_right"])
 
 
 # ---------------------------------------------------------------------------
@@ -62,8 +63,9 @@ def _apply_body_formatting(doc: Document, template_config: dict):
     font_cn = body_config.get("font_cn")
     font_en = body_config.get("font_en")
     font_size = body_config.get("size")
+    font_size_pt = font_size_to_pt(font_size) if font_size else None
     line_spacing = body_config.get("line_spacing")
-    first_indent = body_config.get("first_indent", 0)
+    first_indent = body_config.get("first_indent", "0字符")
 
     for para in doc.paragraphs:
         # Skip headings — they have their own formatting
@@ -87,18 +89,23 @@ def _apply_body_formatting(doc: Document, template_config: dict):
                     rfonts.set(qn("w:eastAsia"), font_cn)
 
             if font_size:
-                run.font.size = Pt(font_size)
+                run.font.size = to_pt(font_size)
 
         # Paragraph-level formatting
         if line_spacing:
             pf = para.paragraph_format
-            pf.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
-            pf.line_spacing = line_spacing
+            spacing_val = to_spacing(line_spacing)
+            if isinstance(spacing_val, float):
+                pf.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
+                pf.line_spacing = spacing_val
+            else:
+                pf.line_spacing = spacing_val
 
-        if first_indent and first_indent > 0:
-            # First line indent in chars → convert to cm (1 char ≈ 0.74 cm for 12pt)
-            indent_cm = first_indent * (font_size or 12) * 0.0265
-            para.paragraph_format.first_line_indent = Cm(indent_cm)
+        indent_num, indent_unit = parse_unit(first_indent)
+        if indent_num > 0 and indent_unit == "char":
+            para.paragraph_format.first_line_indent = to_length(first_indent, font_size_pt=font_size_pt or 12)
+        elif indent_num > 0:
+            para.paragraph_format.first_line_indent = to_length(first_indent)
 
 
 # ---------------------------------------------------------------------------
@@ -183,13 +190,14 @@ def _apply_heading_formatting(para, heading_config: dict):
                 rfonts.set(qn("w:eastAsia"), font_cn)
 
         if heading_config.get("size"):
-            run.font.size = Pt(heading_config["size"])
+            run.font.size = to_pt(heading_config["size"])
         if heading_config.get("bold"):
             run.font.bold = True
         run.font.color.rgb = RGBColor(0, 0, 0)
 
-    if heading_config.get("center"):
-        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    alignment = to_alignment(heading_config.get("alignment", "左对齐"))
+    if alignment is not None:
+        para.alignment = alignment
 
 
 # ---------------------------------------------------------------------------
@@ -255,8 +263,8 @@ def _fix_tables(doc, template_config) -> list[CompatItem]:
     items = []
 
     page_config = template_config.get("page", {})
-    margin_left = page_config.get("margin_left", 3.17)
-    margin_right = page_config.get("margin_right", 3.17)
+    margin_left = parse_unit(page_config.get("margin_left", "3.17厘米"))[0]
+    margin_right = parse_unit(page_config.get("margin_right", "3.17厘米"))[0]
     available_width = 21.0 - margin_left - margin_right
 
     for table in doc.tables:

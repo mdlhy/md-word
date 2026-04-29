@@ -174,6 +174,12 @@ def _convert_node(node: dict[str, Any]) -> Token | None:
         a = node.get("attrs") or {}
         if a.get("url"):
             attrs["src"] = a["url"]
+        alt_parts = []
+        for ch in (node.get("children") or []):
+            if ch.get("type") == "text":
+                alt_parts.append(ch.get("raw", ""))
+        if alt_parts:
+            attrs["alt"] = "".join(alt_parts)
 
     elif ntype == "block_quote":
         token_type = "blockquote"

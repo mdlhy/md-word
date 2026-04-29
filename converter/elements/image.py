@@ -9,6 +9,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 
 from converter.md_parser import Token
+from converter.format_units import parse_unit
 
 
 def add_image(doc: Document, token: Token, template_config: dict):
@@ -20,8 +21,8 @@ def add_image(doc: Document, token: Token, template_config: dict):
         return None
     
     page_config = template_config.get("page", {})
-    margin_left = page_config.get("margin_left", 3.17)
-    margin_right = page_config.get("margin_right", 3.17)
+    margin_left = parse_unit(page_config.get("margin_left", "3.17厘米"))[0]
+    margin_right = parse_unit(page_config.get("margin_right", "3.17厘米"))[0]
     page_width = 21.0
     max_width_cm = page_width - margin_left - margin_right - 2.0
     max_width = Cm(max_width_cm)

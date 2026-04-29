@@ -1,107 +1,130 @@
-"""Style template definitions for MD → .docx conversion."""
+"""Style template definitions for MD → .docx conversion.
 
+All font sizes and spacing values use Chinese academic notation:
+  字号: '小四', '三号', '五号', etc. (see format_units.FONT_SIZE_MAP)
+  行距: '1.5倍', '20磅'
+  缩进: '2字符'
+  对齐: '居中对齐', '两端对齐', '左对齐'
+"""
 
 TEMPLATES = {
     'academic': {
         'name': '学术论文',
         'heading1': {
             'font_cn': '黑体', 'font_en': 'Times New Roman',
-            'size': 16, 'bold': True, 'center': True,
+            'size': '三号', 'bold': True, 'alignment': '居中对齐',
+            'space_before': '0.5行', 'space_after': '0.5行',
+            'numbering': {'enabled': True, 'template': '第%1章', 'suffix': 'space'},
         },
         'heading2': {
             'font_cn': '黑体', 'font_en': 'Times New Roman',
-            'size': 14, 'bold': True, 'center': False,
+            'size': '四号', 'bold': True, 'alignment': '左对齐',
+            'space_before': '0.5行', 'space_after': '0.5行',
+            'numbering': {'enabled': True, 'template': '%1.%2', 'suffix': 'space'},
         },
         'heading3': {
             'font_cn': '黑体', 'font_en': 'Times New Roman',
-            'size': 12, 'bold': True, 'center': False,
+            'size': '小四', 'bold': True, 'alignment': '左对齐',
+            'numbering': {'enabled': True, 'template': '%1.%2.%3', 'suffix': 'space'},
         },
         'body': {
             'font_cn': '宋体', 'font_en': 'Times New Roman',
-            'size': 12, 'line_spacing': 1.5, 'first_indent': 2,
+            'size': '小四', 'line_spacing': '1.5倍', 'first_indent': '2字符',
+            'alignment': '两端对齐',
         },
         'code': {
-            'font': 'Consolas', 'size': 10, 'bg_color': 'F5F5F5',
+            'font': 'Consolas', 'size': '五号', 'bg_color': 'F5F5F5',
         },
         'quote': {
-            'indent': 2, 'border_color': 'CCCCCC',
+            'indent': '2字符', 'border_color': 'CCCCCC',
         },
         'table': {
             'three_line_default': True,
             'header_bold': True,
+            'caption_position': 'above',
+            'caption_prefix': '表',
+            'caption_size': '五号',
+        },
+        'figure': {
+            'caption_position': 'below',
+            'caption_prefix': '图',
+            'caption_size': '五号',
+        },
+        'abstract': {
+            'title_size': '三号', 'title_font_cn': '黑体', 'title_alignment': '居中对齐',
+            'content_size': '小四',
+        },
+        'keywords': {
+            'label_font_cn': '黑体', 'label_size': '小四',
+            'content_size': '小四', 'separator': '；',
+        },
+        'references': {
+            'title_size': '三号', 'title_font_cn': '黑体', 'title_alignment': '居中对齐',
+            'entry_size': '五号', 'entry_hanging_indent': '2字符',
+            'entry_numbering': '[1], [2], ...',
         },
         'page': {
             'width': 'A4',
-            'margin_top': 2.54, 'margin_bottom': 2.54,
-            'margin_left': 3.17, 'margin_right': 3.17,
+            'margin_top': '2.54厘米', 'margin_bottom': '2.54厘米',
+            'margin_left': '3.17厘米', 'margin_right': '3.17厘米',
         },
-    },
-    'homework': {
-        'name': '课程作业',
-        'heading1': {
-            'font_cn': '黑体', 'font_en': 'Times New Roman',
-            'size': 12, 'bold': True, 'center': True,
+        'header': {
+            'text': '', 'size': '小五', 'font_cn': '宋体',
         },
-        'heading2': {
-            'font_cn': '黑体', 'font_en': 'Times New Roman',
-            'size': 10.5, 'bold': True, 'center': False,
-        },
-        'heading3': {
-            'font_cn': '黑体', 'font_en': 'Times New Roman',
-            'size': 10.5, 'bold': True, 'center': False,
-        },
-        'body': {
-            'font_cn': '宋体', 'font_en': 'Times New Roman',
-            'size': 10.5, 'line_spacing': 1.25, 'first_indent': 2,
-        },
-        'code': {
-            'font': 'Consolas', 'size': 9, 'bg_color': 'F5F5F5',
-        },
-        'quote': {
-            'indent': 2, 'border_color': 'CCCCCC',
-        },
-        'table': {
-            'three_line_default': False,
-            'header_bold': True,
-        },
-        'page': {
-            'width': 'A4',
-            'margin_top': 2.54, 'margin_bottom': 2.54,
-            'margin_left': 2.54, 'margin_right': 2.54,
+        'footer': {
+            'page_number': True, 'size': '小五',
         },
     },
     'report': {
         'name': '工作文档',
         'heading1': {
             'font_cn': '微软雅黑', 'font_en': 'Calibri',
-            'size': 16, 'bold': True, 'center': False,
+            'size': '三号', 'bold': True, 'alignment': '左对齐',
+            'numbering': {'enabled': True, 'template': '%1', 'suffix': 'space'},
         },
         'heading2': {
             'font_cn': '微软雅黑', 'font_en': 'Calibri',
-            'size': 14, 'bold': True, 'center': False,
+            'size': '四号', 'bold': True, 'alignment': '左对齐',
+            'numbering': {'enabled': True, 'template': '%1.%2', 'suffix': 'space'},
         },
         'heading3': {
             'font_cn': '微软雅黑', 'font_en': 'Calibri',
-            'size': 12, 'bold': True, 'center': False,
+            'size': '小四', 'bold': True, 'alignment': '左对齐',
+            'numbering': {'enabled': True, 'template': '%1.%2.%3', 'suffix': 'space'},
         },
         'body': {
             'font_cn': '微软雅黑', 'font_en': 'Calibri',
-            'size': 10.5, 'line_spacing': 1.15, 'first_indent': 0,
+            'size': '五号', 'line_spacing': '1.15倍', 'first_indent': '0字符',
+            'alignment': '两端对齐',
         },
         'code': {
-            'font': 'Consolas', 'size': 10, 'bg_color': 'F2F2F2',
+            'font': 'Consolas', 'size': '五号', 'bg_color': 'F2F2F2',
         },
         'quote': {
-            'indent': 1.5, 'border_color': '4472C4',
+            'indent': '1.5字符', 'border_color': '4472C4',
         },
         'table': {
             'three_line_default': False,
             'header_bold': True,
+            'caption_position': 'above',
+            'caption_prefix': '表',
+            'caption_size': '五号',
+        },
+        'figure': {
+            'caption_position': 'below',
+            'caption_prefix': '图',
+            'caption_size': '五号',
         },
         'page': {
             'width': 'A4',
-            'margin_top': 2.5, 'margin_bottom': 2.5,
-            'margin_left': 2.5, 'margin_right': 2.5,
+            'margin_top': '2.5厘米', 'margin_bottom': '2.5厘米',
+            'margin_left': '2.5厘米', 'margin_right': '2.5厘米',
+        },
+        'header': {
+            'text': '', 'size': '小五', 'font_cn': '微软雅黑',
+        },
+        'footer': {
+            'page_number': True, 'size': '小五',
         },
     },
 }
@@ -110,12 +133,10 @@ DEFAULT_TEMPLATE = 'academic'
 
 
 def get_template(name: str | None = None) -> dict:
-    """Get template config by name. Returns default if name is None or invalid."""
     if name is None or name not in TEMPLATES:
         return TEMPLATES[DEFAULT_TEMPLATE]
     return TEMPLATES[name]
 
 
 def list_templates() -> list[dict]:
-    """List available templates as [{id, name}, ...]."""
     return [{'id': k, 'name': v['name']} for k, v in TEMPLATES.items()]

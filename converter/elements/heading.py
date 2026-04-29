@@ -1,10 +1,10 @@
 from docx import Document
 from docx.shared import Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
 from converter.md_parser import Token
+from converter.format_units import to_pt, to_alignment
 
 
 def add_heading(doc: Document, token: Token, template_config: dict):
@@ -48,12 +48,13 @@ def add_heading(doc: Document, token: Token, template_config: dict):
         rfonts.set(qn("w:eastAsia"), heading_config.get("font_cn", "黑体"))
         
         if heading_config.get("size"):
-            run.font.size = Pt(heading_config["size"])
+            run.font.size = to_pt(heading_config["size"])
         if heading_config.get("bold"):
             run.font.bold = True
         run.font.color.rgb = RGBColor(0, 0, 0)
     
-    if heading_config.get("center"):
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    alignment = to_alignment(heading_config.get("alignment", "左对齐"))
+    if alignment is not None:
+        p.alignment = alignment
     
     return p

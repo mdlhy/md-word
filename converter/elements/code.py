@@ -4,6 +4,7 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
 from converter.md_parser import Token
+from converter.format_units import to_pt
 
 
 def add_code_block(doc: Document, token: Token, template_config: dict):
@@ -54,7 +55,7 @@ def add_code_block(doc: Document, token: Token, template_config: dict):
         if i < len(lines) - 1 or line:  # skip only the last line if empty
             run = p.add_run(line if line else " ")
             run.font.name = font_name
-            run.font.size = Pt(font_size)
+            run.font.size = to_pt(font_size)
             # Set eastAsia font too
             r_elem = run._element
             rpr = r_elem.find(qn("w:rPr"))
