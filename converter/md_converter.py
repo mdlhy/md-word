@@ -108,7 +108,46 @@ def _add_inline_children(paragraph, children: list[Token], config: dict):
 def _add_rich_paragraph(doc: Document, token: Token, config: dict):
     p = doc.add_paragraph()
     _add_inline_children(p, token.children, config)
+    _apply_body_format(p, config)
     return p
+
+
+def _apply_body_format(paragraph, config: dict):
+    body_cfg = config.get("body", {})
+    if not body_cfg:
+        return
+
+    for run in paragraph.runs:
+        if body_cfg.get("font_cn"):
+            run.font.name = body_cfg.get("font_en", "Times New Roman")
+            r_elem = run._element
+            rpr = r_elem.find(qn("w:rPr"))
+            if rpr is None:
+                rpr = OxmlElement("w:rPr")
+                r_elem.insert(0, rpr)
+            rfonts = rpr.find(qn("w:rFonts"))
+            if rfonts is None:
+                rfonts = OxmlElement("w:rFonts")
+                rpr.insert(0, rfonts)
+            rfonts.set(qn("w:eastAsia"), body_cfg["font_cn"])
+        if body_cfg.get("size"):
+            run.font.size = to_pt(body_cfg["size"])
+
+    if body_cfg.get("line_spacing"):
+        from converter.format_units import to_spacing
+        spacing = to_spacing(body_cfg["line_spacing"])
+        paragraph.paragraph_format.line_spacing = spacing
+
+    if body_cfg.get("first_indent"):
+        from converter.format_units import to_length, font_size_to_pt
+        body_size_pt = font_size_to_pt(body_cfg.get("size", "小四"))
+        indent = to_length(body_cfg["first_indent"], font_size_pt=body_size_pt)
+        paragraph.paragraph_format.first_line_indent = indent
+
+    from converter.format_units import to_alignment
+    alignment = to_alignment(body_cfg.get("alignment", "两端对齐"))
+    if alignment is not None:
+        paragraph.alignment = alignment
 
 
 _TOC_HEADING_RE = __import__("re").compile(
@@ -240,6 +279,78 @@ def _apply_header_footer(doc: Document, config: dict):
             end_run._element.append(fldChar_end)
 
 
+def _apply_title_author(doc: Document, config: dict, heading_paragraphs: list):
+    """Apply title/author styles for templates that define them (e.g. dialectics).
+
+    Detects the first H1 as title, the bold paragraph immediately after as author.
+    Only applies if the template has 'title' and/or 'author' config blocks.
+    """
+    title_cfg = config.get("title")
+    author_cfg = config.get("author")
+    if not title_cfg and not author_cfg:
+        return
+
+    if not heading_paragraphs:
+        return
+
+    first_level, first_para = heading_paragraphs[0]
+    if first_level != 1:
+        return
+
+    if title_cfg:
+        for run in first_para.runs:
+            if title_cfg.get("font_cn"):
+                run.font.name = title_cfg.get("font_en", "Times New Roman")
+                r_elem = run._element
+                rpr = r_elem.find(qn("w:rPr"))
+                if rpr is None:
+                    rpr = OxmlElement("w:rPr")
+                    r_elem.insert(0, rpr)
+                rfonts = rpr.find(qn("w:rFonts"))
+                if rfonts is None:
+                    rfonts = OxmlElement("w:rFonts")
+                    rpr.insert(0, rfonts)
+                rfonts.set(qn("w:eastAsia"), title_cfg["font_cn"])
+            if title_cfg.get("size"):
+                run.font.size = to_pt(title_cfg["size"])
+            run.font.bold = False
+        from converter.format_units import to_alignment
+        alignment = to_alignment(title_cfg.get("alignment", "居中对齐"))
+        if alignment is not None:
+            first_para.alignment = alignment
+
+    if author_cfg:
+        body = doc.element.body
+        first_para_elem = first_para._element
+        next_elem = first_para_elem.getnext()
+        if next_elem is not None:
+            for para in doc.paragraphs:
+                if para._element is next_elem and para.runs:
+                    all_bold = all(r.font.bold for r in para.runs if r.text.strip())
+                    if all_bold:
+                        for run in para.runs:
+                            if author_cfg.get("font_cn"):
+                                run.font.name = author_cfg.get("font_en", "Times New Roman")
+                                r_elem = run._element
+                                rpr = r_elem.find(qn("w:rPr"))
+                                if rpr is None:
+                                    rpr = OxmlElement("w:rPr")
+                                    r_elem.insert(0, rpr)
+                                rfonts = rpr.find(qn("w:rFonts"))
+                                if rfonts is None:
+                                    rfonts = OxmlElement("w:rFonts")
+                                    rpr.insert(0, rfonts)
+                                rfonts.set(qn("w:eastAsia"), author_cfg["font_cn"])
+                            if author_cfg.get("size"):
+                                run.font.size = to_pt(author_cfg["size"])
+                            run.font.bold = False
+                        from converter.format_units import to_alignment
+                        alignment = to_alignment(author_cfg.get("alignment", "居中对齐"))
+                        if alignment is not None:
+                            para.alignment = alignment
+                    break
+
+
 def convert_md_to_docx(
     md_text: str,
     template_name: str = "academic",
@@ -344,6 +455,7 @@ def convert_md_to_docx(
                 p = _add_rich_paragraph(doc, token, config)
             else:
                 p = doc.add_paragraph(token.content)
+                _apply_body_format(p, config)
 
             if section_state["in_abstract"]:
                 para_text = p.text.strip()
@@ -358,6 +470,7 @@ def convert_md_to_docx(
             _add_thematic_break(doc)
 
     process_heading_numbering(doc, config, heading_paragraphs)
+    _apply_title_author(doc, config, heading_paragraphs)
     _apply_header_footer(doc, config)
 
     report = generate_compat_report(compat_items)
