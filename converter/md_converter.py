@@ -150,6 +150,20 @@ def _apply_body_format(paragraph, config: dict):
         paragraph.alignment = alignment
 
 
+def _force_run_black(run):
+    from docx.oxml.ns import qn as _qn
+    rpr = run._element.find(_qn("w:rPr"))
+    if rpr is None:
+        rpr = OxmlElement("w:rPr")
+        run._element.insert(0, rpr)
+    color_el = rpr.find(_qn("w:color"))
+    if color_el is None:
+        color_el = OxmlElement("w:color")
+        rpr.append(color_el)
+    color_el.set(_qn("w:val"), "000000")
+    color_el.set(_qn("w:themeColor"), "text1")
+
+
 _TOC_HEADING_RE = __import__("re").compile(
     r"^(目录|Table\s+of\s+Contents|Contents|TOC)$", __import__("re").IGNORECASE
 )
@@ -180,7 +194,7 @@ def _add_toc_field(doc: Document):
     run_sep._element.append(fldChar_sep)
 
     placeholder = p.add_run("请更新目录：右键 → 更新域")
-    placeholder.font.color.rgb = None
+    _force_run_black(placeholder)
 
     run_end = p.add_run()
     fldChar_end = OxmlElement("w:fldChar")
@@ -314,6 +328,7 @@ def _apply_title_author(doc: Document, config: dict, heading_paragraphs: list):
             if title_cfg.get("size"):
                 run.font.size = to_pt(title_cfg["size"])
             run.font.bold = False
+            _force_run_black(run)
         from converter.format_units import to_alignment
         alignment = to_alignment(title_cfg.get("alignment", "居中对齐"))
         if alignment is not None:
@@ -344,6 +359,7 @@ def _apply_title_author(doc: Document, config: dict, heading_paragraphs: list):
                             if author_cfg.get("size"):
                                 run.font.size = to_pt(author_cfg["size"])
                             run.font.bold = False
+                            _force_run_black(run)
                         from converter.format_units import to_alignment
                         alignment = to_alignment(author_cfg.get("alignment", "居中对齐"))
                         if alignment is not None:

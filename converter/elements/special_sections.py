@@ -62,11 +62,26 @@ def format_abstract_heading(paragraph, config: dict):
         if abstract_cfg.get("title_size"):
             run.font.size = to_pt(abstract_cfg["title_size"])
         run.font.bold = True
-        run.font.color.rgb = None
+        _force_black_color(run)
 
     alignment = to_alignment(abstract_cfg.get("title_alignment", "居中对齐"))
     if alignment is not None:
         paragraph.alignment = alignment
+
+
+def _force_black_color(run):
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+    rpr = run._element.find(qn("w:rPr"))
+    if rpr is None:
+        rpr = OxmlElement("w:rPr")
+        run._element.insert(0, rpr)
+    color_el = rpr.find(qn("w:color"))
+    if color_el is None:
+        color_el = OxmlElement("w:color")
+        rpr.append(color_el)
+    color_el.set(qn("w:val"), "000000")
+    color_el.set(qn("w:themeColor"), "text1")
 
 
 def format_abstract_content(paragraph, config: dict):
@@ -165,7 +180,7 @@ def format_references_heading(paragraph, config: dict):
         if ref_cfg.get("title_size"):
             run.font.size = to_pt(ref_cfg["title_size"])
         run.font.bold = True
-        run.font.color.rgb = None
+        _force_black_color(run)
 
     alignment = to_alignment(ref_cfg.get("title_alignment", "居中对齐"))
     if alignment is not None:

@@ -36,9 +36,11 @@ _STRIP_PATTERNS: dict[int, list[re.Pattern]] = {
         re.compile(r"^(\d+)\s+"),
     ],
     2: [
+        re.compile(r"^[一二三四五六七八九十]+[、.]\s*"),
         re.compile(r"^(\d+[.、])\s*(\d+)\s*[.、]?\s*"),
     ],
     3: [
+        re.compile(r"^问题\s*\d+\s*[：:]\s*"),
         re.compile(r"^(\d+[.、])\s*(\d+[.、])\s*(\d+)\s*[.、]?\s*"),
     ],
 }

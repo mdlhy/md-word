@@ -51,7 +51,16 @@ def add_heading(doc: Document, token: Token, template_config: dict):
             run.font.size = to_pt(heading_config["size"])
         if heading_config.get("bold"):
             run.font.bold = True
-        run.font.color.rgb = RGBColor(0, 0, 0)
+        rpr_main = run._element.find(qn("w:rPr"))
+        if rpr_main is None:
+            rpr_main = OxmlElement("w:rPr")
+            run._element.insert(0, rpr_main)
+        color_el = rpr_main.find(qn("w:color"))
+        if color_el is None:
+            color_el = OxmlElement("w:color")
+            rpr_main.append(color_el)
+        color_el.set(qn("w:val"), "000000")
+        color_el.set(qn("w:themeColor"), "text1")
     
     alignment = to_alignment(heading_config.get("alignment", "左对齐"))
     if alignment is not None:
