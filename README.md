@@ -1,149 +1,167 @@
 # MD / Word 格式助手
 
-面向 WPS / Word 的本地格式助手，覆盖两个主流程：
+一个面向 WPS / Word 的本地文档格式助手。
 
-1. Markdown 转 Word：将 AI 生成的 Markdown 转成 WPS 友好的 `.docx`。
-2. Word 格式自适应：上传已有 `.docx`，自动修复标题、列表、表格、公式和正文格式。
+项目现在的主线是 **Pandoc + Python 后处理**：先用 Pandoc 生成结构稳定的 `.docx`，再用 Python 修复 WPS 兼容细节、公式、表格、标题、图片和常见中文排版规则。没有安装 Pandoc 时，`auto` 模式会回退到 legacy 转换链路。
 
-网页端支持自定义常见排版规则，包括中文/英文字体、字号、行距、首行缩进、段落对齐、页边距、标题编号、三线表和页码。
+## 主要能力
 
-## 解决什么问题
+- Markdown 转 Word：上传 `.md`，生成 WPS 友好的 `.docx`。
+- Word 格式自适应：上传 `.docx`，按模板和自定义规则修复格式。
+- 公式处理：支持 `$...$`、`$$...$$`，尽量转换为 Word/WPS 可编辑公式。
+- 快捷粘贴：把含 `$` 的 LaTeX 文本转换为更适合 WPS 公式粘贴的代码格式，并自动删除公式定界符。
+- 格式预设：内置论文常用、办公清爽、紧凑打印、跟随模板，也支持自定义字体、字号、行距、缩进、页边距、标题编号、三线表和页码。
+- 代码块：使用 Pygments 做语法高亮。
+- 图表块：支持矩阵、柱状图、折线图、饼图、散点图、网络图和流程图渲染。
+- 图片处理：本地图片优先；远程图片默认关闭，可通过环境变量开启。
+- 兼容性报告：转换后返回 WPS 风险提示和公式统计。
+- CLI 批处理：支持单文件、目录批量和递归转换。
 
-AI 生成的 Markdown 粘贴到 WPS 后：
-- 公式变成乱码
-- 表格错乱
-- 标题没有层级样式
-- 列表嵌套丢失
-- 引用块没有样式
-- 代码块没有底色
-- 图片链接失效
-
-本工具提供转换、修复和格式自定义三件事。
-
-## 功能
-
-### Markdown → docx
-- 上传 .md 文件，生成格式完整的 .docx
-- 公式 `$...$` / `$$...$$` → WPS 可编辑的 OMML 格式（失败保留 LaTeX 原文）
-- 表格 → Word 原生表格（支持三线表）
-- 标题 → Heading 1-3 样式
-- 有序/无序列表 → 多级 Word 列表
-- 引用块 → 缩进 + 左边框
-- **代码块 → 语法高亮（30+ 语言，VS Code 风格主题）**
-- 远程图片自动下载嵌入，SVG/WebP 自动转 PNG
-- **图表渲染 → 矩阵/柱状图/折线图/饼图/网络图/流程图**
-- 支持网页端自定义格式设置，并将同一套规则应用到 Pandoc 后处理
-
-### docx 修复
-- 上传已有 .docx，自动检测并修复格式问题
-- 修复标题样式（去掉 # 号）
-- 修复列表样式
-- 修复表格宽度/边框
-- 修复公式为 OMML
-- 支持按网页端格式规则自适应调整正文、页边距、表格和标题编号
-
-### 样式模板
-- 学术论文：宋体/Times，1.5 倍行距
-- 工作文档：微软雅黑，1.25 倍行距
-- 自然辩证法论文：方正小标宋/仿宋，22磅行距
-
-### WPS 兼容检测
-- 转换后显示每个元素的风险等级（🟢低 / 🟡中 / 🔴高）
-- 高风险公式（如 `\begin{aligned}`）提前预警
-
-### 命令行工具
-- 支持单文件和目录批量转换
-- 可选模板和三线表样式
-- 递归处理子目录
-
-## 安装
+## 快速开始
 
 ```bash
-git clone https://github.com/mdlhy/md-formula-converter.git
-cd md-formula-converter
+git clone https://github.com/mdlhy/md-word.git
+cd md-word
+
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-macOS 额外依赖（SVG 支持）：
-```bash
-brew install cairo pango
-```
+推荐安装 Pandoc：
 
-推荐安装 Pandoc 作为 Markdown→docx 主引擎：
 ```bash
 brew install pandoc
 python -m converter.cli --check-runtime
 ```
 
-未安装 Pandoc 时，默认 `auto` 模式会回退到 legacy 转换链路；安装后会自动优先使用 Pandoc + Python 后处理。
+启动网页端：
 
-## 使用
+```bash
+python -m uvicorn app:app --host 127.0.0.1 --port 8972
+```
+
+浏览器打开：
+
+```text
+http://127.0.0.1:8972/
+```
+
+macOS 也可以在安装好依赖后双击：
+
+```text
+start.command
+```
+
+Linux 可运行：
+
+```bash
+./start.sh
+```
+
+## 使用方式
 
 ### Web UI
 
-**双击 `start.command`** 启动，浏览器自动打开 http://localhost:8972
+首页是统一入口：
 
-或手动启动：
+- 左侧主面板：`MD / Word 格式助手`
+- 右侧侧栏：`快捷粘贴`
+- 上传 `.md`：执行 Markdown 转 Word
+- 上传 `.docx`：执行 Word 格式自适应
+
+格式区默认显示常用预设，更多细节放在“更多自定义”里。
+
+### CLI
+
+单文件转换：
+
 ```bash
-source venv/bin/activate
-python app.py
+python -m converter.cli input.md
 ```
 
-### 命令行
+指定输出文件：
 
 ```bash
-# 单文件转换
-python -m converter.cli input.md
-
-# 指定输出路径
 python -m converter.cli input.md -o output.docx
+```
 
-# 使用指定模板
+指定模板：
+
+```bash
+python -m converter.cli input.md -t academic
 python -m converter.cli input.md -t report
+python -m converter.cli input.md -t dialectics
+```
 
-# 使用三线表
-python -m converter.cli input.md --three-line
+指定引擎：
 
-# 批量转换目录
-python -m converter.cli ./docs/ -o ./output/
-
-# 递归处理子目录
-python -m converter.cli ./docs/ -o ./output/ -r
-
-# 列出所有模板
-python -m converter.cli --list-templates
-
-# 详细日志
-python -m converter.cli input.md -v
-
-# 检查 Pandoc 运行环境
-python -m converter.cli --check-runtime
-
-# 指定转换引擎
+```bash
+python -m converter.cli input.md --engine auto
 python -m converter.cli input.md --engine pandoc
 python -m converter.cli input.md --engine legacy
 ```
 
-### 代码语法高亮
+批量转换目录：
 
-代码块自动应用语法高亮，支持 30+ 种语言：
+```bash
+python -m converter.cli ./docs -o ./output
+python -m converter.cli ./docs -o ./output -r
+```
 
+其他常用命令：
+
+```bash
+python -m converter.cli --list-templates
+python -m converter.cli --check-runtime
+python -m converter.cli input.md --three-line
+python -m converter.cli input.md -v
+```
+
+## 模板与格式预设
+
+文档模板：
+
+| 模板 ID | 名称 | 典型用途 |
+| --- | --- | --- |
+| `academic` | 学术论文 | 宋体 / Times New Roman，小四，1.5 倍行距，论文页边距 |
+| `report` | 工作文档 | 更适合报告、说明文档和办公材料 |
+| `dialectics` | 自然辩证法论文 | 面向自然辩证法课程论文格式 |
+
+网页格式预设：
+
+| 预设 | 说明 |
+| --- | --- |
+| 论文常用 | 宋体小四、1.5 倍行距、三线表 |
+| 办公清爽 | 微软雅黑、1.25 倍行距、标准页边距 |
+| 紧凑打印 | 五号字、1.15 倍行距、窄页边距 |
+| 跟随模板 | 不覆盖模板样式，只使用所选参考模板 |
+
+## Markdown 扩展
+
+### 公式
+
+```markdown
+行内公式：$E=mc^2$
+
+块级公式：
+$$
+\frac{a}{b}
+$$
+```
+
+### 代码块
+
+````markdown
 ```python
 def hello():
-    print("Hello, World!")
+    print("Hello")
 ```
+````
 
-```javascript
-function hello() {
-    console.log("Hello, World!");
-}
-```
+### 图表块
 
-### 图表渲染
-
-使用特殊代码块创建图表：
+矩阵：
 
 ````markdown
 ```matrix
@@ -153,7 +171,11 @@ name: A
 7 8 9
 caption: 矩阵 A
 ```
+````
 
+柱状图：
+
+````markdown
 ```chart
 type: bar
 title: 性能对比
@@ -161,7 +183,11 @@ labels: 冒泡排序, 快速排序, 归并排序
 时间(ms): 450, 35, 38
 caption: 排序算法性能对比
 ```
+````
 
+流程图：
+
+````markdown
 ```workflow
 title: 登录流程
 [开始]
@@ -173,24 +199,98 @@ caption: 用户登录流程图
 ```
 ````
 
-| 图表类型 | 说明 | 依赖 |
-|:---------|:-----|:-----|
-| `matrix` | 矩阵图 | matplotlib |
-| `chart` | 柱状/折线/饼/散点图 | matplotlib |
-| `graph` | 网络/有向图 | matplotlib + networkx |
-| `workflow` | 流程图 | matplotlib |
+## API
 
-## 技术栈
+本地服务默认运行在 `http://127.0.0.1:8972`。
 
-- **后端**: Python + FastAPI
-- **MD 解析**: mistune v3（自定义数学公式插件）
-- **Pandoc 主线**: Pandoc docx/reference.docx + Python 后处理（auto 模式优先）
-- **公式转换**: math2docx → OMML（备选：latex2mathml → MathML → OMML）
-- **代码高亮**: Pygments（30+ 语言，VS Code 主题）
-- **图表渲染**: matplotlib + networkx
-- **docx 生成**: python-docx + lxml（三线表边框操控）
-- **图片处理**: cairosvg / svglib+reportlab（SVG→PNG）、Pillow（WebP→PNG）
-- **前端**: 原生 HTML/CSS/JS，零框架
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `POST` | `/api/convert-md` | Markdown 转 `.docx` |
+| `POST` | `/api/repair` | `.docx` 格式自适应修复 |
+| `POST` | `/api/paste-wps` | 快捷粘贴公式转换 |
+| `GET` | `/api/download/{download_id}` | 下载转换结果 |
+| `GET` | `/api/templates` | 查看文档模板 |
+| `GET` | `/api/format-presets` | 查看网页格式预设 |
+| `GET` | `/api/runtime` | 检查 Pandoc、参考模板和远程图片策略 |
+
+限制：
+
+- 上传文件最大 `50MB`。
+- 快捷粘贴文本最大 `2MB`。
+- 下载文件默认保留 `30` 分钟。
+
+## 运行环境
+
+基础依赖：
+
+- Python 3.10+
+- FastAPI / Uvicorn
+- python-docx / lxml
+- mistune
+- math2docx / latex2mathml
+- Pygments
+- matplotlib / networkx
+- Pillow / cairosvg / svglib / reportlab
+
+推荐外部依赖：
+
+- Pandoc：Markdown 转 Word 主引擎。
+- macOS SVG 支持依赖：
+
+```bash
+brew install cairo pango
+```
+
+## 环境变量
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `MD2WPS_ENGINE` | `auto` | CLI 默认引擎，可设为 `auto`、`pandoc`、`legacy` |
+| `MD2WPS_ALLOWED_ORIGINS` | `http://127.0.0.1:8972,http://localhost:8972` | CORS 白名单 |
+| `MD2WPS_ALLOW_REMOTE_IMAGES` | 空 | 设为 `1`、`true` 或 `yes` 后允许处理远程图片 |
+
+## 开发与测试
+
+运行全量测试：
+
+```bash
+venv/bin/python -m pytest -q
+```
+
+常用检查：
+
+```bash
+python -m converter.cli --check-runtime
+node --check web/app.js
+```
+
+当前重构版本的基线：
+
+```text
+70 passed
+```
+
+## 项目结构
+
+```text
+app.py                     FastAPI 服务和 API
+converter/                 转换、修复、Pandoc、公式、样式和图片处理
+templates/                 Word 参考模板
+web/                       原生 HTML/CSS/JS 前端
+tests/                     回归测试
+start.command              macOS 启动脚本
+start.sh                   Linux 启动脚本
+start.bat                  Windows 启动脚本
+```
+
+## 设计取向
+
+这个项目不是单纯的 Markdown 转换器，而是一个面向中文 WPS/Word 使用场景的格式助手。优先保证：
+
+- WPS 打开后格式稳定。
+- 中文论文和办公文档排版足够可控。
+- 公式、表格、标题、图片和代码块有可回归测试。
+- Pandoc 负责结构转换，Python 负责最后一公里的格式修复。
 
 ## License
 
