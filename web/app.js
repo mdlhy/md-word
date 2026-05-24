@@ -40,16 +40,40 @@
     templateSelect: document.getElementById('template-select'),
     threeLineCheck: document.getElementById('three-line-check'),
     mdOptions: document.getElementById('md-options'),
-    docxOptions: document.getElementById('docx-options')
+    runtimeStrip: document.getElementById('runtime-strip'),
+    runtimeDot: document.getElementById('runtime-dot'),
+    runtimeText: document.getElementById('runtime-text'),
+    formatPresetSelect: document.getElementById('format-preset-select'),
+    formatFontCn: document.getElementById('format-font-cn'),
+    formatFontEn: document.getElementById('format-font-en'),
+    formatSize: document.getElementById('format-size'),
+    formatLineSpacing: document.getElementById('format-line-spacing'),
+    formatIndent: document.getElementById('format-indent'),
+    formatAlignment: document.getElementById('format-alignment'),
+    formatMargin: document.getElementById('format-margin'),
+    formatHeadingNumbering: document.getElementById('format-heading-numbering'),
+    formatPageNumber: document.getElementById('format-page-number'),
+    pasteInput: document.getElementById('paste-input'),
+    pasteOutput: document.getElementById('paste-output'),
+    pasteStats: document.getElementById('paste-stats'),
+    pasteStatus: document.getElementById('paste-status'),
+    pasteConvertBtn: document.getElementById('paste-convert-btn'),
+    pasteCopyBtn: document.getElementById('paste-copy-btn'),
+    pasteClearBtn: document.getElementById('paste-clear-btn')
   };
 
   var state = {
     file: null,
     fileType: null,
     result: null,
+    runtime: null,
+    formatPresets: {},
     allExpanded: false,
     compatExpanded: false
   };
+
+  var pasteTimer = null;
+  var applyingPreset = false;
 
   var workflows = {
     md: {
@@ -82,6 +106,13 @@
     els.fileInput.click();
   });
 
+  els.uploadZone.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      els.fileInput.click();
+    }
+  });
+
   els.uploadZone.addEventListener('dragover', function(e) {
     e.preventDefault();
     els.uploadZone.classList.add('dragover');
@@ -103,6 +134,26 @@
     if (file) selectFile(file);
   });
 
+  els.formatPresetSelect.addEventListener('change', function() {
+    applySelectedFormatPreset();
+  });
+
+  document.querySelectorAll('.preset-card').forEach(function(button) {
+    button.addEventListener('click', function() {
+      els.formatPresetSelect.value = button.getAttribute('data-preset') || 'academic';
+      applySelectedFormatPreset();
+    });
+  });
+
+  getFormatControls().forEach(function(control) {
+    control.addEventListener('change', function() {
+      if (!applyingPreset) {
+        els.formatPresetSelect.value = 'custom';
+        updatePresetCards();
+      }
+    });
+  });
+
   els.fileRemove.addEventListener('click', resetSelection);
 
   els.startBtn.addEventListener('click', function() {
@@ -110,9 +161,14 @@
     submitCurrentFile();
   });
 
-  els.docxOptions.addEventListener('change', function(e) {
-    if (e.target.name === 'docx-mode') updateProcessUI();
+  document.querySelectorAll('input[name="engine-mode"]').forEach(function(input) {
+    input.addEventListener('change', updateProcessUI);
   });
+
+  els.pasteInput.addEventListener('input', schedulePasteConvert);
+  els.pasteConvertBtn.addEventListener('click', submitPasteText);
+  els.pasteCopyBtn.addEventListener('click', copyPasteOutput);
+  els.pasteClearBtn.addEventListener('click', clearPasteTool);
 
   els.formulaList.addEventListener('click', function(e) {
     var header = e.target.closest('.formula-header');
@@ -173,9 +229,8 @@
 
     els.fileIcon.textContent = ext === 'md' ? 'MD' : 'DOCX';
     els.fileName.textContent = file.name;
-    els.fileMeta.textContent = formatFileSize(file.size);
+    els.fileMeta.textContent = (ext === 'md' ? 'Markdown' : 'Word 文档') + ' · ' + formatFileSize(file.size);
     els.mdOptions.style.display = ext === 'md' ? '' : 'none';
-    els.docxOptions.style.display = ext === 'docx' ? '' : 'none';
     els.uploadZone.style.display = 'none';
     els.optionsPanel.style.display = '';
     updateProcessUI();
@@ -199,16 +254,17 @@
   function updateProcessUI() {
     var workflow = getWorkflow();
     if (!workflow) return;
-    els.processSummary.textContent = workflow.summary;
+    var summary = workflow.summary;
+    if (workflow.kind === 'md') {
+      summary += ' 当前引擎：' + formatEngineName(getSelectedEngine()) + '。';
+    }
+    els.processSummary.textContent = summary;
     els.startBtn.textContent = workflow.action;
   }
 
   function getWorkflow() {
     if (state.fileType === 'md') return workflows.md;
-    if (state.fileType === 'docx') {
-      var selected = document.querySelector('input[name="docx-mode"]:checked');
-      return workflows[selected ? selected.value : 'repair'];
-    }
+    if (state.fileType === 'docx') return workflows.repair;
     return null;
   }
 
@@ -227,8 +283,11 @@
     if (workflow.kind === 'md') {
       formData.append('template', els.templateSelect.value);
       formData.append('three_line', els.threeLineCheck.checked ? 'true' : 'false');
+      formData.append('engine', getSelectedEngine());
+      formData.append('format_options', JSON.stringify(collectFormatOptions()));
     } else if (workflow.kind === 'docx-repair') {
       formData.append('template', els.templateSelect.value);
+      formData.append('format_options', JSON.stringify(collectFormatOptions()));
     }
 
     fetch(workflow.endpoint, { method: 'POST', body: formData })
@@ -260,6 +319,83 @@
       });
   }
 
+  function schedulePasteConvert() {
+    clearTimeout(pasteTimer);
+    pasteTimer = setTimeout(submitPasteText, 160);
+  }
+
+  function submitPasteText() {
+    var text = els.pasteInput.value;
+    clearTimeout(pasteTimer);
+
+    if (!text.trim()) {
+      els.pasteOutput.value = '';
+      els.pasteStats.textContent = '';
+      els.pasteStatus.textContent = '';
+      return;
+    }
+
+    els.pasteConvertBtn.disabled = true;
+    els.pasteStatus.textContent = '转换中...';
+
+    fetch('/api/paste-wps', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text })
+    })
+      .then(parseJsonResponse)
+      .then(function(data) {
+        var stats = data.stats || {};
+        els.pasteOutput.value = data.text || '';
+        els.pasteStats.textContent = '公式 ' + (stats.formula_count || 0)
+          + ' 个 / 删除 $ ' + (stats.dollars_removed || 0) + ' 个';
+        els.pasteStatus.textContent = '已转换';
+      })
+      .catch(function(err) {
+        els.pasteStatus.textContent = err instanceof TypeError ? '网络错误' : err.message;
+      })
+      .finally(function() {
+        els.pasteConvertBtn.disabled = false;
+      });
+  }
+
+  function copyPasteOutput() {
+    var text = els.pasteOutput.value;
+    if (!text) {
+      els.pasteStatus.textContent = '暂无结果';
+      return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(function() { els.pasteStatus.textContent = '已复制'; })
+        .catch(fallbackCopyPasteOutput);
+      return;
+    }
+
+    fallbackCopyPasteOutput();
+  }
+
+  function fallbackCopyPasteOutput() {
+    els.pasteOutput.focus();
+    els.pasteOutput.select();
+    try {
+      document.execCommand('copy');
+      els.pasteStatus.textContent = '已复制';
+    } catch (e) {
+      els.pasteStatus.textContent = '复制失败';
+    }
+  }
+
+  function clearPasteTool() {
+    clearTimeout(pasteTimer);
+    els.pasteInput.value = '';
+    els.pasteOutput.value = '';
+    els.pasteStats.textContent = '';
+    els.pasteStatus.textContent = '';
+    els.pasteInput.focus();
+  }
+
   function normalizeResult(data, workflow) {
     var stats = data.stats || {};
     var compatReport = data.compat_report || null;
@@ -279,11 +415,13 @@
       kind: workflow.kind,
       title: workflow.title,
       fileName: state.file.name,
+      engine: data.engine || '',
       downloadId: data.download_id,
       downloadName: buildDownloadName(state.file.name, workflow.suffix),
       stats: stats,
       compatReport: compatReport,
-      formulas: formulas
+      formulas: formulas,
+      formulaStats: data.formula_stats || null,
     };
   }
 
@@ -292,13 +430,15 @@
     if (!result) return;
 
     els.resultTitle.textContent = result.title;
-    els.resultMeta.textContent = result.fileName + ' -> ' + result.downloadName;
+    els.resultMeta.textContent = result.fileName + ' -> ' + result.downloadName
+      + (result.engine ? ' · 引擎：' + formatEngineName(result.engine) : '');
     renderStats(result);
     renderCompatReport(result.compatReport);
     renderFormulaList(result.formulas);
 
     els.uploadSection.hidden = true;
     els.resultsSection.hidden = false;
+    els.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function renderStats(result) {
@@ -309,6 +449,9 @@
         ? result.compatReport.summary
         : { low: 0, medium: 0, high: 0 };
       var total = (summary.low || 0) + (summary.medium || 0) + (summary.high || 0);
+      var formulaSummary = result.kind === 'md'
+        ? formatFormulaStats(result.formulaStats, result.engine)
+        : '';
       els.statTotal.textContent = total;
       els.statSuccess.textContent = summary.low || 0;
       els.statFailed.textContent = summary.medium || 0;
@@ -317,9 +460,9 @@
       els.statSuccessLabel.textContent = '低风险';
       els.statFailedLabel.textContent = '中风险';
       els.statSkippedLabel.textContent = '高风险';
-      els.statsSummary.textContent = total > 0
+      els.statsSummary.textContent = (total > 0
         ? '共检查 ' + total + ' 个元素。'
-        : '未发现需要修复的兼容性问题。';
+        : '未发现需要修复的兼容性问题。') + formulaSummary;
       return;
     }
 
@@ -511,6 +654,121 @@
     return base + '_' + suffix + '.docx';
   }
 
+  function getSelectedEngine() {
+    var selected = document.querySelector('input[name="engine-mode"]:checked');
+    return selected ? selected.value : 'auto';
+  }
+
+  function formatFormulaStats(stats, engine) {
+    if (!stats) return '';
+    var total = stats.document_total || stats.total || 0;
+    var nativeOmml = stats.native_omml || 0;
+    var postprocessed = stats.postprocessed || stats.converted || 0;
+    var residual = stats.residual_latex || 0;
+    var nativeLabel = engine === 'pandoc' ? 'Pandoc 原生' : '已生成 OMML';
+    return ' 文档公式 ' + total + ' 个；' + nativeLabel + ' ' + nativeOmml
+      + ' 个，后处理 ' + postprocessed + ' 个，残留 LaTeX ' + residual + ' 个。';
+  }
+
+  function formatEngineName(engine) {
+    if (engine === 'pandoc') return 'Pandoc';
+    if (engine === 'legacy') return 'Legacy';
+    if (engine === 'auto') return 'Auto';
+    return engine;
+  }
+
+  function getFormatControls() {
+    return [
+      els.formatFontCn,
+      els.formatFontEn,
+      els.formatSize,
+      els.formatLineSpacing,
+      els.formatIndent,
+      els.formatAlignment,
+      els.formatMargin,
+      els.formatHeadingNumbering,
+      els.threeLineCheck,
+      els.formatPageNumber
+    ].filter(Boolean);
+  }
+
+  function collectFormatOptions() {
+    if (els.formatPresetSelect.value === 'template') {
+      return {};
+    }
+    return {
+      body: {
+        font_cn: els.formatFontCn.value,
+        font_en: els.formatFontEn.value,
+        size: els.formatSize.value,
+        line_spacing: els.formatLineSpacing.value,
+        first_indent: els.formatIndent.value,
+        alignment: els.formatAlignment.value
+      },
+      page: {
+        margin_preset: els.formatMargin.value
+      },
+      heading: {
+        numbering: els.formatHeadingNumbering.checked,
+        alignment: '左对齐'
+      },
+      table: {
+        three_line_default: els.threeLineCheck.checked,
+        header_bold: true
+      },
+      footer: {
+        page_number: els.formatPageNumber.checked
+      }
+    };
+  }
+
+  function applySelectedFormatPreset() {
+    var id = els.formatPresetSelect.value;
+    updatePresetCards();
+    if (id === 'custom') return;
+    var preset = state.formatPresets[id];
+    var options = preset ? preset.options : {};
+    applyFormatOptionsToControls(options || {});
+  }
+
+  function updatePresetCards() {
+    var selected = els.formatPresetSelect.value;
+    document.querySelectorAll('.preset-card').forEach(function(button) {
+      button.classList.toggle('active', button.getAttribute('data-preset') === selected);
+    });
+  }
+
+  function applyFormatOptionsToControls(options) {
+    applyingPreset = true;
+    var body = options.body || {};
+    var page = options.page || {};
+    var heading = options.heading || {};
+    var table = options.table || {};
+    var footer = options.footer || {};
+
+    setControlValue(els.formatFontCn, body.font_cn || '宋体');
+    setControlValue(els.formatFontEn, body.font_en || 'Times New Roman');
+    setControlValue(els.formatSize, body.size || '小四');
+    setControlValue(els.formatLineSpacing, body.line_spacing || '1.5倍');
+    setControlValue(els.formatIndent, body.first_indent || '2字符');
+    setControlValue(els.formatAlignment, body.alignment || '两端对齐');
+    setControlValue(els.formatMargin, page.margin_preset || 'thesis');
+    els.formatHeadingNumbering.checked = heading.numbering !== false;
+    els.threeLineCheck.checked = table.three_line_default !== false;
+    els.formatPageNumber.checked = footer.page_number !== false;
+    applyingPreset = false;
+  }
+
+  function setControlValue(control, value) {
+    if (!control) return;
+    var option = Array.prototype.find.call(control.options || [], function(item) {
+      return item.value === value || item.textContent === value;
+    });
+    if (option) {
+      control.value = option.value;
+    }
+  }
+
   function getFileExtension(fileName) {
     var parts = fileName.toLowerCase().split('.');
     return parts.length > 1 ? parts.pop() : '';
@@ -546,4 +804,50 @@
       });
     })
     .catch(function() {});
+
+  fetch('/api/format-presets')
+    .then(parseJsonResponse)
+    .then(function(data) {
+      state.formatPresets = {};
+      if (Array.isArray(data.presets)) {
+        data.presets.forEach(function(preset) {
+          state.formatPresets[preset.id] = preset;
+        });
+      }
+      applySelectedFormatPreset();
+    })
+    .catch(function() {
+      applySelectedFormatPreset();
+    });
+
+  fetch('/api/runtime')
+    .then(parseJsonResponse)
+    .then(function(data) {
+      state.runtime = data;
+      renderRuntimeStatus();
+    })
+    .catch(function() {
+      state.runtime = { pandoc: { available: false, install_hint: '无法读取运行环境状态' } };
+      renderRuntimeStatus();
+    });
+
+  function renderRuntimeStatus() {
+    var pandoc = state.runtime && state.runtime.pandoc ? state.runtime.pandoc : {};
+    var referenceDocs = state.runtime && state.runtime.reference_docs ? state.runtime.reference_docs : {};
+    var available = !!pandoc.available;
+    var referencesOk = referenceDocs.ok !== false;
+    els.runtimeStrip.hidden = false;
+    els.runtimeStrip.classList.toggle('runtime-ok', available);
+    els.runtimeStrip.classList.toggle('runtime-missing', !available);
+    els.runtimeText.textContent = available
+      ? 'Pandoc 可用：' + (pandoc.version || pandoc.path || '已安装')
+      : 'Pandoc 不可用，自动模式将回退 Legacy。' + (pandoc.install_hint ? ' ' + pandoc.install_hint : '');
+
+    document.querySelectorAll('input[name="engine-mode"][value="pandoc"]').forEach(function(input) {
+      input.disabled = !available;
+      if (!available && input.checked) {
+        document.querySelector('input[name="engine-mode"][value="auto"]').checked = true;
+      }
+    });
+  }
 })();

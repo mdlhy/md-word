@@ -11,6 +11,13 @@ from docx.oxml.ns import qn
 from converter.md_parser import Token
 from converter.format_units import parse_unit
 
+MAX_REMOTE_IMAGE_BYTES = 10 * 1024 * 1024
+ALLOW_REMOTE_IMAGES = os.environ.get("MD2WPS_ALLOW_REMOTE_IMAGES", "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
 
 def add_image(doc: Document, token: Token, template_config: dict):
     src = token.attrs.get("src", "")
@@ -35,10 +42,27 @@ def add_image(doc: Document, token: Token, template_config: dict):
     
     try:
         if src.startswith(("http://", "https://")):
+            if not ALLOW_REMOTE_IMAGES:
+                run = p.add_run(f"远程图片已跳过: {src}")
+                run.font.size = Pt(10)
+                return p
             try:
                 resp = requests.get(src, timeout=10, stream=True)
                 resp.raise_for_status()
-                image_data = resp.content
+                content_length = resp.headers.get("Content-Length")
+                if content_length and int(content_length) > MAX_REMOTE_IMAGE_BYTES:
+                    raise ValueError("remote image too large")
+
+                chunks = []
+                size = 0
+                for chunk in resp.iter_content(chunk_size=64 * 1024):
+                    if not chunk:
+                        continue
+                    size += len(chunk)
+                    if size > MAX_REMOTE_IMAGE_BYTES:
+                        raise ValueError("remote image too large")
+                    chunks.append(chunk)
+                image_data = b"".join(chunks)
             except Exception:
                 run = p.add_run(f"图片加载失败: {src}")
                 run.font.size = Pt(10)
@@ -80,6 +104,22 @@ def add_image(doc: Document, token: Token, template_config: dict):
         run = p.add_run(f"图片加载失败: {src}")
         run.font.size = Pt(10)
         return p
+
+
+def add_image_bytes(doc: Document, image_data: bytes, template_config: dict):
+    page_config = template_config.get("page", {})
+    margin_left = parse_unit(page_config.get("margin_left", "3.17厘米"))[0]
+    margin_right = parse_unit(page_config.get("margin_right", "3.17厘米"))[0]
+    page_width = 21.0
+    max_width_cm = page_width - margin_left - margin_right - 2.0
+    max_width = Cm(max_width_cm)
+
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    stream = BytesIO(image_data)
+    run = p.add_run()
+    run.add_picture(stream, width=max_width)
+    return p
 
 
 def _convert_svg_to_png(svg_data: bytes) -> bytes | None:

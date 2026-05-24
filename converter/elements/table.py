@@ -5,6 +5,7 @@ from docx.oxml import OxmlElement
 
 from converter.md_parser import Token
 from converter.format_units import parse_unit
+from converter.inline_text import tokens_to_plain_text
 
 
 def _set_cell_border(cell, **kwargs):
@@ -88,15 +89,7 @@ def _get_cell_text(token: Token) -> str:
     if token.content:
         return token.content
     if token.children:
-        parts = []
-        for child in token.children:
-            if child.type == "text":
-                parts.append(child.content)
-            elif child.type == "math":
-                parts.append(child.content)
-            elif child.type in ("strong", "em", "codespan"):
-                parts.append(child.content)
-        return " ".join(parts).strip()
+        return tokens_to_plain_text(token.children).strip()
     return ""
 
 

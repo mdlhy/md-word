@@ -164,7 +164,9 @@ def _convert_node(node: dict[str, Any]) -> Token | None:
         content = node.get("raw", "")
         a = node.get("attrs") or {}
         if a.get("info"):
-            attrs["lang"] = a["info"]
+            language = a["info"].strip().split()[0]
+            attrs["lang"] = language
+            attrs["language"] = language
         attrs.pop("info", None)
 
     elif ntype == "codespan":
