@@ -3,127 +3,282 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MD→WPS 一键排版</title>
+  <title>MD→WPS 文档工作台</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 </head>
 <body>
-  <header class="title-bar">MD→WPS 一键排版</header>
-  <main>
-    <!-- ===== Upload Section ===== -->
-    <section id="upload-section">
-      <div id="upload-zone" class="upload-zone">
-        <div class="upload-icon">📎</div>
-        <p class="upload-text">拖拽 .md 或 .docx 文件到此处，或点击上传</p>
-        <p class="upload-hint">支持 Markdown 和 Word 文档，自动识别处理方式</p>
-        <input type="file" id="file-input" accept=".md,.docx" hidden>
-      </div>
+  <div class="app-frame">
+    <header class="app-header">
+      <a class="brand" href="#upload-section" aria-label="MD to WPS">
+        <span class="brand-mark">MD</span>
+        <span>
+          <strong>格式助手</strong>
+          <small>MD / Word 本地工作台</small>
+        </span>
+      </a>
+      <nav class="header-nav" aria-label="主要入口">
+        <a href="#upload-section">格式助手</a>
+        <a href="#quick-paste-section">公式粘贴</a>
+      </nav>
+    </header>
 
-      <!-- Dynamic options panel — shown after file is selected -->
-      <div id="options-panel" class="options-panel" style="display:none;">
-        <div class="file-info">
-          <span id="file-icon" class="file-icon">📝</span>
-          <span class="file-text">
-            <span id="file-name" class="file-name"></span>
-            <span id="file-meta" class="file-meta"></span>
-          </span>
-          <button id="file-remove" class="file-remove" title="移除文件">✕</button>
+    <main class="workbench">
+      <section id="quick-paste-section" class="tool-panel quick-paste">
+        <div class="panel-heading">
+          <div>
+            <span class="panel-kicker">Formula Paste</span>
+            <h1>快捷粘贴</h1>
+          </div>
+          <span id="paste-stats" class="paste-stats"></span>
         </div>
 
-        <div id="process-summary" class="process-summary"></div>
+        <div class="quick-paste-grid">
+          <label class="paste-pane">
+            <span>输入</span>
+            <textarea id="paste-input" class="paste-textarea" spellcheck="false" placeholder="例如：$E=mc^2$ 或 $$\frac{a}{b}$$"></textarea>
+          </label>
 
-        <div class="options-body">
-          <div class="option-row">
-            <label for="template-select">样式模板：</label>
-            <select id="template-select">
-              <option value="academic">学术论文</option>
-              <option value="homework">课程作业</option>
-              <option value="report">工作文档</option>
-            </select>
+          <label class="paste-pane">
+            <span>WPS 公式代码</span>
+            <textarea id="paste-output" class="paste-textarea" readonly spellcheck="false"></textarea>
+          </label>
+        </div>
+
+        <div class="paste-actions">
+          <button id="paste-convert-btn" class="primary-btn" type="button">转换</button>
+          <button id="paste-copy-btn" class="secondary-btn" type="button">复制结果</button>
+          <button id="paste-clear-btn" class="ghost-btn" type="button">清空</button>
+          <span id="paste-status" class="paste-status" aria-live="polite"></span>
+        </div>
+      </section>
+
+      <section id="upload-section" class="tool-panel convert-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="panel-kicker">Format Assistant</span>
+            <h1>MD / Word 格式助手</h1>
+          </div>
+        </div>
+
+        <section class="format-lab" aria-label="格式设置">
+          <div class="format-lab-header">
+            <div>
+              <span class="panel-kicker">Format Rules</span>
+              <h2>选择格式预设</h2>
+            </div>
+            <span class="format-current">可自定义</span>
           </div>
 
-          <!-- Options for .md files -->
-          <div id="md-options" class="sub-options">
-            <label class="checkbox-label"><input type="checkbox" id="three-line-check"> 三线表</label>
+          <input id="format-preset-select" type="hidden" value="academic">
+          <div class="preset-strip" id="format-preset-list" aria-label="格式预设">
+            <button class="preset-card active" type="button" data-preset="academic">
+              <span class="preset-name">论文常用</span>
+              <span class="preset-meta">宋体小四 · 1.5 倍 · 三线表</span>
+            </button>
+            <button class="preset-card" type="button" data-preset="office">
+              <span class="preset-name">办公清爽</span>
+              <span class="preset-meta">微软雅黑 · 1.25 倍 · 标准页边距</span>
+            </button>
+            <button class="preset-card" type="button" data-preset="compact">
+              <span class="preset-name">紧凑打印</span>
+              <span class="preset-meta">五号字 · 1.15 倍 · 窄页边距</span>
+            </button>
+            <button class="preset-card" type="button" data-preset="template">
+              <span class="preset-name">跟随模板</span>
+              <span class="preset-meta">只使用所选模板格式</span>
+            </button>
           </div>
 
-          <!-- Options for .docx files -->
-          <div id="docx-options" class="sub-options" style="display:none;">
+          <details class="custom-format-details">
+            <summary>更多自定义</summary>
+            <div class="format-grid">
+              <label>
+                <span>中文字体</span>
+                <select id="format-font-cn">
+                  <option>宋体</option>
+                  <option>仿宋</option>
+                  <option>黑体</option>
+                  <option>微软雅黑</option>
+                  <option>楷体</option>
+                </select>
+              </label>
+              <label>
+                <span>英文字体</span>
+                <select id="format-font-en">
+                  <option>Times New Roman</option>
+                  <option>Calibri</option>
+                  <option>Arial</option>
+                  <option>Cambria</option>
+                </select>
+              </label>
+              <label>
+                <span>正文字号</span>
+                <select id="format-size">
+                  <option>五号</option>
+                  <option selected>小四</option>
+                  <option>四号</option>
+                  <option>小三</option>
+                </select>
+              </label>
+              <label>
+                <span>行距</span>
+                <select id="format-line-spacing">
+                  <option>1.15倍</option>
+                  <option>1.25倍</option>
+                  <option selected>1.5倍</option>
+                  <option>20磅</option>
+                  <option>22磅</option>
+                  <option>24磅</option>
+                </select>
+              </label>
+              <label>
+                <span>首行缩进</span>
+                <select id="format-indent">
+                  <option>0字符</option>
+                  <option>1字符</option>
+                  <option selected>2字符</option>
+                </select>
+              </label>
+              <label>
+                <span>段落对齐</span>
+                <select id="format-alignment">
+                  <option>左对齐</option>
+                  <option>居中对齐</option>
+                  <option selected>两端对齐</option>
+                </select>
+              </label>
+              <label>
+                <span>页边距</span>
+                <select id="format-margin">
+                  <option value="thesis" selected>论文页边距</option>
+                  <option value="normal">标准页边距</option>
+                  <option value="narrow">窄页边距</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="format-switches">
+              <label class="checkbox-label"><input type="checkbox" id="format-heading-numbering" checked> 标题自动编号</label>
+              <label class="checkbox-label"><input type="checkbox" id="three-line-check" checked> 表格使用三线表</label>
+              <label class="checkbox-label"><input type="checkbox" id="format-page-number" checked> 添加页码</label>
+            </div>
+          </details>
+        </section>
+
+        <div id="upload-zone" class="upload-zone" tabindex="0" role="button" aria-label="上传 Markdown 或 Word 文件">
+          <div class="upload-icon">DOC</div>
+          <p class="upload-text">拖入 Markdown 或 Word 文档</p>
+          <p class="upload-hint">.md 自动生成 Word，.docx 自动做格式自适应</p>
+          <input type="file" id="file-input" accept=".md,.docx" hidden>
+        </div>
+
+        <div id="options-panel" class="options-panel" style="display:none;">
+          <div class="file-info">
+            <span id="file-icon" class="file-icon">MD</span>
+            <span class="file-text">
+              <span id="file-name" class="file-name"></span>
+              <span id="file-meta" class="file-meta"></span>
+            </span>
+            <button id="file-remove" class="icon-btn" type="button" title="移除文件" aria-label="移除文件">×</button>
+          </div>
+
+          <div id="process-summary" class="process-summary"></div>
+          <div id="runtime-strip" class="runtime-strip" hidden>
+            <span id="runtime-dot" class="runtime-dot"></span>
+            <span id="runtime-text">正在检查 Pandoc...</span>
+          </div>
+
+          <div class="options-body">
             <div class="option-row">
-              <label>处理方式：</label>
-              <div class="radio-group">
-                <label class="radio-label"><input type="radio" name="docx-mode" value="repair" checked> 修复格式</label>
-                <label class="radio-label"><input type="radio" name="docx-mode" value="convert"> 转换公式</label>
+              <label for="template-select">样式模板</label>
+              <select id="template-select">
+                <option value="academic">学术论文</option>
+                <option value="report">工作文档</option>
+                <option value="dialectics">自然辩证法论文</option>
+              </select>
+            </div>
+
+            <div id="md-options" class="sub-options">
+              <div class="engine-option">
+                <span class="option-label">转换引擎</span>
+                <div class="segmented-control" role="radiogroup" aria-label="转换引擎">
+                  <label><input type="radio" name="engine-mode" value="auto" checked><span>自动</span></label>
+                  <label><input type="radio" name="engine-mode" value="pandoc"><span>Pandoc</span></label>
+                  <label><input type="radio" name="engine-mode" value="legacy"><span>Legacy</span></label>
+                </div>
               </div>
             </div>
+
+          </div>
+
+          <button id="start-btn" class="primary-btn wide-btn" type="button">开始处理</button>
+        </div>
+
+        <div id="loading" class="loading" hidden>
+          <div class="spinner"></div>
+          <p>正在转换...</p>
+        </div>
+        <p id="error-msg" class="error-msg" hidden></p>
+      </section>
+
+      <section id="results-section" class="tool-panel results-panel" hidden>
+        <div class="result-header">
+          <div>
+            <span class="panel-kicker">Result</span>
+            <h1 id="result-title" class="result-title">处理完成</h1>
+            <p id="result-meta" class="result-meta"></p>
           </div>
         </div>
 
-        <button id="start-btn" class="start-btn">开始处理</button>
-      </div>
+        <div class="stats-summary" id="stats-summary"></div>
 
-      <div id="loading" class="loading" hidden>
-        <div class="spinner"></div>
-        <p>正在转换...</p>
-      </div>
-      <p id="error-msg" class="error-msg" hidden></p>
-    </section>
+        <div id="stats-grid" class="stats">
+          <div class="stat-item stat-total">
+            <span id="stat-total" class="stat-number">0</span>
+            <span id="stat-total-label" class="stat-label">总数</span>
+          </div>
+          <div class="stat-item stat-success">
+            <span id="stat-success" class="stat-number">0</span>
+            <span id="stat-success-label" class="stat-label">成功</span>
+          </div>
+          <div class="stat-item stat-failed">
+            <span id="stat-failed" class="stat-number">0</span>
+            <span id="stat-failed-label" class="stat-label">失败</span>
+          </div>
+          <div class="stat-item stat-skipped">
+            <span id="stat-skipped" class="stat-number">0</span>
+            <span id="stat-skipped-label" class="stat-label">跳过</span>
+          </div>
+        </div>
 
-    <!-- ===== Results Section ===== -->
-    <section id="results-section" hidden>
-      <div class="result-header">
-        <div>
-          <h1 id="result-title" class="result-title">处理完成</h1>
-          <p id="result-meta" class="result-meta"></p>
+        <div id="compat-panel" style="display:none;">
+          <div class="compat-header">
+            <h3>WPS 兼容性检测</h3>
+            <button id="compat-toggle" class="secondary-btn small-btn" type="button">展开详情</button>
+          </div>
+          <div id="compat-summary"></div>
+          <div id="compat-items"></div>
         </div>
-      </div>
 
-      <div class="stats-summary" id="stats-summary"></div>
+        <div id="formula-panel" style="display:none;">
+          <div class="formula-list-header">
+            <h2 class="formula-list-title">公式列表</h2>
+            <button id="toggle-all-formulas" class="secondary-btn small-btn" type="button" style="display:none;">全部展开</button>
+          </div>
+          <ul id="formula-list" class="formula-list"></ul>
+        </div>
 
-      <div id="stats-grid" class="stats">
-        <div class="stat-item stat-total">
-          <span id="stat-total" class="stat-number">0</span>
-          <span id="stat-total-label" class="stat-label">总数</span>
+        <div class="actions">
+          <button id="download-btn" class="primary-btn" type="button">下载转换后的文件</button>
+          <button id="reset-btn" class="secondary-btn" type="button">重新上传</button>
         </div>
-        <div class="stat-item stat-success">
-          <span id="stat-success" class="stat-number">0</span>
-          <span id="stat-success-label" class="stat-label">成功</span>
-        </div>
-        <div class="stat-item stat-failed">
-          <span id="stat-failed" class="stat-number">0</span>
-          <span id="stat-failed-label" class="stat-label">失败</span>
-        </div>
-        <div class="stat-item stat-skipped">
-          <span id="stat-skipped" class="stat-number">0</span>
-          <span id="stat-skipped-label" class="stat-label">跳过</span>
-        </div>
-      </div>
+      </section>
+    </main>
 
-      <div id="compat-panel" style="display:none;">
-        <div class="compat-header">
-          <h3>WPS 兼容性检测</h3>
-          <button id="compat-toggle" class="toggle-all-btn" type="button">展开详情</button>
-        </div>
-        <div id="compat-summary"></div>
-        <div id="compat-items"></div>
-      </div>
-
-      <div id="formula-panel" style="display:none;">
-        <div class="formula-list-header">
-          <h2 class="formula-list-title">公式列表</h2>
-          <button id="toggle-all-formulas" class="toggle-all-btn" style="display:none;">全部展开</button>
-        </div>
-        <ul id="formula-list" class="formula-list"></ul>
-      </div>
-
-      <div class="actions">
-        <button id="download-btn" class="download-btn">⬇ 下载转换后的文件</button>
-        <button id="reset-btn" class="reset-btn">重新上传</button>
-      </div>
-    </section>
-  </main>
-  <footer class="footer">MD→WPS 一键排版 · 本地运行</footer>
+    <footer class="footer">MD / Word 格式助手 · 127.0.0.1 本地运行</footer>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>

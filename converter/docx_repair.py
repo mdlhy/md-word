@@ -6,19 +6,30 @@ detection of structural issues (bare # headings, unstyled lists, etc.).
 
 import re
 from docx import Document
-from docx.shared import Cm, Pt, RGBColor
+from docx.shared import Cm
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 
 from converter.compat_report import CompatItem, CompatReport, generate_compat_report
-from converter.templates import get_template
+from converter.format_options import build_effective_template
 from converter.format_units import to_pt, to_length, to_spacing, font_size_to_pt, to_alignment, parse_unit
+from converter.docx_style import apply_document_text_policy, set_run_text_policy
 
 
-def repair_docx(input_path: str, template_name: str = "academic") -> tuple[Document, CompatReport]:
+def repair_docx(
+    input_path: str,
+    template_name: str = "academic",
+    fix_formulas: bool = True,
+    format_options: dict | None = None,
+    three_line_override: bool | None = None,
+) -> tuple[Document, CompatReport]:
     doc = Document(input_path)
-    template_config = get_template(template_name)
+    template_config = build_effective_template(
+        template_name,
+        format_options,
+        three_line_override=three_line_override,
+    )
     items = []
 
     _apply_page_margins(doc, template_config)
@@ -26,7 +37,14 @@ def repair_docx(input_path: str, template_name: str = "academic") -> tuple[Docum
     items.extend(_fix_lists(doc, template_config))
     items.extend(_fix_tables(doc, template_config))
     _apply_body_formatting(doc, template_config)
-    items.extend(_fix_formulas(doc))
+    if fix_formulas:
+        items.extend(_fix_formulas(doc))
+    body_config = template_config.get("body", {})
+    apply_document_text_policy(
+        doc,
+        cn_font=body_config.get("font_cn", "宋体"),
+        en_font=body_config.get("font_en", "Times New Roman"),
+    )
 
     report = generate_compat_report(items)
     return doc, report
@@ -176,24 +194,12 @@ def _apply_heading_formatting(para, heading_config: dict):
 
     for run in para.runs:
         if font_en:
-            run.font.name = font_en
-            r_elem = run._element
-            rpr = r_elem.find(qn("w:rPr"))
-            if rpr is None:
-                rpr = OxmlElement("w:rPr")
-                r_elem.insert(0, rpr)
-            rfonts = rpr.find(qn("w:rFonts"))
-            if rfonts is None:
-                rfonts = OxmlElement("w:rFonts")
-                rpr.insert(0, rfonts)
-            if font_cn:
-                rfonts.set(qn("w:eastAsia"), font_cn)
+            set_run_text_policy(run, font_cn or "宋体", font_en)
 
         if heading_config.get("size"):
             run.font.size = to_pt(heading_config["size"])
         if heading_config.get("bold"):
             run.font.bold = True
-        run.font.color.rgb = RGBColor(0, 0, 0)
 
     alignment = to_alignment(heading_config.get("alignment", "左对齐"))
     if alignment is not None:

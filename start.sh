@@ -31,7 +31,7 @@ fi
 
 echo "正在启动 MD→WPS 一键排版..."
 
-python -m uvicorn app:app --host 0.0.0.0 --port 8972 &
+python -m uvicorn app:app --host 127.0.0.1 --port 8972 &
 SERVER_PID=$!
 
 sleep 2

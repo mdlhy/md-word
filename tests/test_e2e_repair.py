@@ -4,6 +4,7 @@ import os
 import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import pytest
 from docx import Document
 from converter.docx_repair import repair_docx
 from converter.templates import TEMPLATES
@@ -11,7 +12,14 @@ from converter.templates import TEMPLATES
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
-def test_repair_headings():
+def _assert_results(results):
+    failed = [item for item in results if item[1] == "FAIL"]
+    if results and all(item[1] == "SKIP" for item in results):
+        pytest.skip(results[0][2])
+    assert not failed, "\n".join(f"{name}: {detail}" for name, _, detail in failed)
+
+
+def _repair_headings_results():
     """Test fixing # prefixed headings."""
     path = os.path.join(FIXTURES_DIR, "broken_headings.docx")
     if not os.path.exists(path):
@@ -37,7 +45,11 @@ def test_repair_headings():
     return results
 
 
-def test_repair_lists():
+def test_repair_headings():
+    _assert_results(_repair_headings_results())
+
+
+def _repair_lists_results():
     """Test fixing list-like plain text."""
     path = os.path.join(FIXTURES_DIR, "broken_lists.docx")
     if not os.path.exists(path):
@@ -61,7 +73,11 @@ def test_repair_lists():
     return results
 
 
-def test_repair_mixed():
+def test_repair_lists():
+    _assert_results(_repair_lists_results())
+
+
+def _repair_mixed_results():
     """Test fixing mixed issues."""
     path = os.path.join(FIXTURES_DIR, "broken_mixed.docx")
     if not os.path.exists(path):
@@ -86,6 +102,10 @@ def test_repair_mixed():
     return results
 
 
+def test_repair_mixed():
+    _assert_results(_repair_mixed_results())
+
+
 def main():
     from tests.generate_broken_docx import generate_broken_headings, generate_broken_lists, generate_broken_mixed
     generate_broken_headings()
@@ -93,9 +113,9 @@ def main():
     generate_broken_mixed()
     
     all_results = []
-    all_results.extend(test_repair_headings())
-    all_results.extend(test_repair_lists())
-    all_results.extend(test_repair_mixed())
+    all_results.extend(_repair_headings_results())
+    all_results.extend(_repair_lists_results())
+    all_results.extend(_repair_mixed_results())
     
     print("\n" + "=" * 80)
     print("E2E Test Results: .docx Repair")

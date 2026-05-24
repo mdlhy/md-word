@@ -9,7 +9,7 @@ if lsof -i :8972 >/dev/null 2>&1; then
 fi
 
 # Start uvicorn in background
-python -m uvicorn app:app --host 0.0.0.0 --port 8972 &
+python -m uvicorn app:app --host 127.0.0.1 --port 8972 &
 SERVER_PID=$!
 
 # Wait for server to start

@@ -68,9 +68,10 @@ def test_all_fixtures():
             failed += 1
     
     print(f"\nTotal: {passed + failed} | Passed: {passed} | Failed: {failed}")
-    return failed == 0
+    assert failed == 0, "\n".join(
+        f"{name}: {detail}" for name, status, detail in results if status == "FAIL"
+    )
 
 
 if __name__ == "__main__":
-    success = test_all_fixtures()
-    sys.exit(0 if success else 1)
+    test_all_fixtures()

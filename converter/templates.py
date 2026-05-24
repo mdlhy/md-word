@@ -11,19 +11,19 @@ TEMPLATES = {
     'academic': {
         'name': '学术论文',
         'heading1': {
-            'font_cn': '黑体', 'font_en': 'Times New Roman',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '三号', 'bold': True, 'alignment': '居中对齐',
             'space_before': '0.5行', 'space_after': '0.5行',
             'numbering': {'enabled': True, 'template': '第%1章', 'suffix': 'space'},
         },
         'heading2': {
-            'font_cn': '黑体', 'font_en': 'Times New Roman',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '四号', 'bold': True, 'alignment': '左对齐',
             'space_before': '0.5行', 'space_after': '0.5行',
             'numbering': {'enabled': True, 'template': '%1.%2', 'suffix': 'space'},
         },
         'heading3': {
-            'font_cn': '黑体', 'font_en': 'Times New Roman',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '小四', 'bold': True, 'alignment': '左对齐',
             'numbering': {'enabled': True, 'template': '%1.%2.%3', 'suffix': 'space'},
         },
@@ -33,7 +33,7 @@ TEMPLATES = {
             'alignment': '两端对齐',
         },
         'code': {
-            'font': 'Consolas', 'size': '五号', 'bg_color': 'F5F5F5',
+            'font': 'Consolas', 'size': '五号', 'bg_color': 'E8E8E8',
         },
         'quote': {
             'indent': '2字符', 'border_color': 'CCCCCC',
@@ -51,15 +51,15 @@ TEMPLATES = {
             'caption_size': '五号',
         },
         'abstract': {
-            'title_size': '三号', 'title_font_cn': '黑体', 'title_alignment': '居中对齐',
+            'title_size': '三号', 'title_font_cn': '宋体', 'title_alignment': '居中对齐',
             'content_size': '小四',
         },
         'keywords': {
-            'label_font_cn': '黑体', 'label_size': '小四',
+            'label_font_cn': '宋体', 'label_size': '小四',
             'content_size': '小四', 'separator': '；',
         },
         'references': {
-            'title_size': '三号', 'title_font_cn': '黑体', 'title_alignment': '居中对齐',
+            'title_size': '三号', 'title_font_cn': '宋体', 'title_alignment': '居中对齐',
             'entry_size': '五号', 'entry_hanging_indent': '2字符',
             'entry_numbering': '[1], [2], ...',
         },
@@ -78,22 +78,22 @@ TEMPLATES = {
     'report': {
         'name': '工作文档',
         'heading1': {
-            'font_cn': '微软雅黑', 'font_en': 'Calibri',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '三号', 'bold': True, 'alignment': '左对齐',
             'numbering': {'enabled': True, 'template': '%1', 'suffix': 'space'},
         },
         'heading2': {
-            'font_cn': '微软雅黑', 'font_en': 'Calibri',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '四号', 'bold': True, 'alignment': '左对齐',
             'numbering': {'enabled': True, 'template': '%1.%2', 'suffix': 'space'},
         },
         'heading3': {
-            'font_cn': '微软雅黑', 'font_en': 'Calibri',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '小四', 'bold': True, 'alignment': '左对齐',
             'numbering': {'enabled': True, 'template': '%1.%2.%3', 'suffix': 'space'},
         },
         'body': {
-            'font_cn': '微软雅黑', 'font_en': 'Calibri',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '五号', 'line_spacing': '1.15倍', 'first_indent': '0字符',
             'alignment': '两端对齐',
         },
@@ -121,7 +121,7 @@ TEMPLATES = {
             'margin_left': '2.5厘米', 'margin_right': '2.5厘米',
         },
         'header': {
-            'text': '', 'size': '小五', 'font_cn': '微软雅黑',
+            'text': '', 'size': '小五', 'font_cn': '宋体',
         },
         'footer': {
             'page_number': True, 'size': '小五',
@@ -130,39 +130,39 @@ TEMPLATES = {
     'dialectics': {
         'name': '自然辩证法论文',
         'title': {
-            'font_cn': '方正小标宋简体', 'font_en': 'Times New Roman',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '小二', 'alignment': '居中对齐',
             'space_after': '0.5行',
         },
         'author': {
-            'font_cn': '楷体', 'font_en': 'Times New Roman',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '小三', 'alignment': '居中对齐',
             'space_after': '1行',
         },
         'heading1': {
-            'font_cn': '黑体', 'font_en': 'Times New Roman',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '三号', 'bold': True, 'alignment': '左对齐',
             'space_before': '0.5行', 'space_after': '0.5行',
             'numbering': {'enabled': False},
         },
         'heading2': {
-            'font_cn': '楷体', 'font_en': 'Times New Roman',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '小三', 'bold': True, 'alignment': '左对齐',
             'space_before': '0.5行', 'space_after': '0.5行',
             'numbering': {'enabled': False},
         },
         'heading3': {
-            'font_cn': '仿宋', 'font_en': 'Times New Roman',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '四号', 'bold': True, 'alignment': '左对齐',
             'numbering': {'enabled': False},
         },
         'body': {
-            'font_cn': '仿宋', 'font_en': 'Times New Roman',
+            'font_cn': '宋体', 'font_en': 'Times New Roman',
             'size': '小四', 'line_spacing': '22磅', 'first_indent': '2字符',
             'alignment': '两端对齐',
         },
         'code': {
-            'font': 'Consolas', 'size': '五号', 'bg_color': 'F5F5F5',
+            'font': 'Consolas', 'size': '五号', 'bg_color': 'E8E8E8',
         },
         'quote': {
             'indent': '2字符', 'border_color': 'CCCCCC',
@@ -173,24 +173,24 @@ TEMPLATES = {
             'caption_position': 'above',
             'caption_prefix': '表',
             'caption_size': '五号',
-            'caption_font_cn': '仿宋',
+            'caption_font_cn': '宋体',
         },
         'figure': {
             'caption_position': 'below',
             'caption_prefix': '图',
             'caption_size': '五号',
-            'caption_font_cn': '仿宋',
+            'caption_font_cn': '宋体',
         },
         'abstract': {
-            'title_size': '三号', 'title_font_cn': '黑体', 'title_alignment': '居中对齐',
+            'title_size': '三号', 'title_font_cn': '宋体', 'title_alignment': '居中对齐',
             'content_size': '小四',
         },
         'keywords': {
-            'label_font_cn': '黑体', 'label_size': '小四',
+            'label_font_cn': '宋体', 'label_size': '小四',
             'content_size': '小四', 'separator': '；',
         },
         'references': {
-            'title_size': '三号', 'title_font_cn': '黑体', 'title_alignment': '居中对齐',
+            'title_size': '三号', 'title_font_cn': '宋体', 'title_alignment': '居中对齐',
             'entry_size': '五号', 'entry_hanging_indent': '2字符',
             'entry_numbering': '[1], [2], ...',
         },
@@ -200,7 +200,7 @@ TEMPLATES = {
             'margin_left': '2.6厘米', 'margin_right': '2.6厘米',
         },
         'header': {
-            'text': '', 'size': '小五', 'font_cn': '仿宋',
+            'text': '', 'size': '小五', 'font_cn': '宋体',
         },
         'footer': {
             'page_number': True, 'size': '小五',

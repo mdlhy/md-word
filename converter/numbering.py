@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 #   "第1章" / "第一章" / "第1节" / "第一节"  → Chinese chapter/section
 #   "1." / "1.1" / "1.1.1"  → Arabic decimal
 #   "1 " / "1  Title"  → Number + space (H1)
+#   "一、" / "二、" / "1、" → Chinese enumeration
 _STRIP_PATTERNS: dict[int, list[re.Pattern]] = {
     1: [
         re.compile(r"^第[一二三四五六七八九十百千\d]+[章节部篇]\s*"),
@@ -38,10 +39,14 @@ _STRIP_PATTERNS: dict[int, list[re.Pattern]] = {
     2: [
         re.compile(r"^[一二三四五六七八九十]+[、.]\s*"),
         re.compile(r"^(\d+[.、])\s*(\d+)\s*[.、]?\s*"),
+        re.compile(r"^[一二三四五六七八九十]+\s*[.、]\s*"),
     ],
     3: [
         re.compile(r"^问题\s*\d+\s*[：:]\s*"),
+        re.compile(r"^\d+\s*[、.]\s*"),
         re.compile(r"^(\d+[.、])\s*(\d+[.、])\s*(\d+)\s*[.、]?\s*"),
+        re.compile(r"^[一二三四五六七八九十]+\s*[.、]\s*\d+\s*[.、]?\s*"),
+        re.compile(r"^\d+\s*[.、]\s*\d+\s*[.、]\s*"),
     ],
 }
 
@@ -143,10 +148,11 @@ def _build_lvl_rPr(heading_config: dict) -> OxmlElement | None:
         rPr.append(szCs)
 
     if heading_config.get("bold"):
-        b = OxmlElement("w:b")
-        rPr.append(b)
-        bCs = OxmlElement("w:bCs")
-        rPr.append(bCs)
+        pass
+
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "000000")
+    rPr.append(color)
 
     if len(rPr) == 0:
         return None

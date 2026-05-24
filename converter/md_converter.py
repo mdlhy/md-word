@@ -7,6 +7,7 @@ and math OMML generation to produce a styled .docx with compatibility report.
 import copy
 import logging
 import os
+from urllib.parse import urlparse
 
 import math2docx
 from docx import Document
@@ -15,16 +16,18 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 from converter.md_parser import Token, parse_markdown
-from converter.templates import get_template
+from converter.format_options import build_effective_template
 from converter.compat_report import CompatItem, CompatReport, assess_formula_risk, assess_image_risk, generate_compat_report
 from converter.elements.heading import add_heading
 from converter.elements.table import add_table
 from converter.elements.list import add_list_item
 from converter.elements.blockquote import add_blockquote
 from converter.elements.code import add_code_block
-from converter.elements.image import add_image
+from converter.elements.image import add_image, add_image_bytes
 from converter.format_units import to_pt
+from converter.inline_text import tokens_to_plain_text
 from converter.numbering import process_heading_numbering
+from converter.diagram_renderer import is_diagram_language, render_diagram
 from converter.elements.special_sections import (
     is_abstract_heading, is_references_heading, is_keywords_paragraph,
     format_abstract_heading, format_abstract_content, format_keywords_paragraph,
@@ -66,6 +69,17 @@ def _add_math_to_paragraph(paragraph, latex: str, display: bool):
             for elem in omath_elements:
                 paragraph._p.append(copy.deepcopy(elem))
     except Exception:
+        try:
+            from converter.math_renderer import latex_to_omml, latex_to_omml_para
+
+            fallback = latex_to_omml_para(latex) if display else latex_to_omml(latex)
+            if fallback is None:
+                raise ValueError("math_renderer produced no OMML")
+            paragraph._p.append(copy.deepcopy(fallback))
+            return
+        except Exception:
+            pass
+
         logger.warning(f"Math conversion failed for: {latex[:50]}")
         safe_text = latex.encode('utf-8', errors='replace').decode('utf-8')
         safe_text = ''.join(c for c in safe_text if ord(c) >= 32 or c in '\t\n')
@@ -73,24 +87,27 @@ def _add_math_to_paragraph(paragraph, latex: str, display: bool):
         run.font.italic = True
 
 
+def _clean_text(text: str) -> str:
+    return ''.join(c for c in text if ord(c) >= 32 or c in '\t\n')
+
+
 def _add_inline_children(paragraph, children: list[Token], config: dict):
     for child in children:
         if child.type == "text":
-            paragraph.add_run(child.content)
+            paragraph.add_run(_clean_text(child.content))
         elif child.type == "strong":
-            text = child.content or "".join(
-                c.content for c in child.children if c.type == "text"
-            )
-            run = paragraph.add_run(text)
+            text = child.content or tokens_to_plain_text(child.children)
+            run = paragraph.add_run(_clean_text(text))
             run.font.bold = True
         elif child.type == "em":
-            text = child.content or "".join(
-                c.content for c in child.children if c.type == "text"
-            )
-            run = paragraph.add_run(text)
+            text = child.content or tokens_to_plain_text(child.children)
+            run = paragraph.add_run(_clean_text(text))
             run.font.italic = True
+        elif child.type == "link":
+            text = child.content or tokens_to_plain_text(child.children)
+            paragraph.add_run(_clean_text(text))
         elif child.type == "codespan":
-            run = paragraph.add_run(child.content)
+            run = paragraph.add_run(_clean_text(child.content))
             run.font.name = "Consolas"
             code_config = config.get("code", {})
             run.font.size = to_pt(code_config.get("size", "五号"))
@@ -103,6 +120,8 @@ def _add_inline_children(paragraph, children: list[Token], config: dict):
             alt_text = child.attrs.get("alt", "")
             if alt_text:
                 add_figure_caption(paragraph.part.document, alt_text, config)
+        elif child.children:
+            _add_inline_children(paragraph, child.children, config)
 
 
 def _add_rich_paragraph(doc: Document, token: Token, config: dict):
@@ -228,6 +247,44 @@ def _collect_math_compat(token: Token, items: list[CompatItem]):
         ))
     for child in token.children:
         _collect_math_compat(child, items)
+
+
+def _is_remote_url(src: str) -> bool:
+    parsed = urlparse(src)
+    return parsed.scheme in ("http", "https")
+
+
+def _resolve_relative_image_sources(tokens: list[Token], base_dir: str | None):
+    if not base_dir:
+        return
+
+    base_dir = os.path.abspath(base_dir)
+
+    def walk(token: Token):
+        if token.type == "image":
+            src = token.attrs.get("src", "") or token.content
+            if src and not _is_remote_url(src) and not os.path.isabs(src):
+                token.attrs["src"] = os.path.abspath(os.path.join(base_dir, src))
+        for child in token.children:
+            walk(child)
+
+    for token in tokens:
+        walk(token)
+
+
+def _add_diagram_block(doc: Document, token: Token, config: dict) -> bool:
+    language = token.attrs.get("language") or token.attrs.get("lang", "")
+    if not is_diagram_language(language):
+        return False
+
+    image_data, caption = render_diagram(token.content, language)
+    if not image_data:
+        return False
+
+    add_image_bytes(doc, image_data, config)
+    if caption:
+        add_figure_caption(doc, caption, config)
+    return True
 
 
 def _apply_header_footer(doc: Document, config: dict):
@@ -371,6 +428,8 @@ def convert_md_to_docx(
     md_text: str,
     template_name: str = "academic",
     three_line: bool = False,
+    base_dir: str | None = None,
+    format_options: dict | None = None,
 ) -> tuple[Document, CompatReport]:
     """Convert markdown text to a python-docx Document with compatibility report.
 
@@ -378,11 +437,14 @@ def convert_md_to_docx(
         md_text: Markdown source text.
         template_name: Template name (academic, homework, report).
         three_line: Force three-line table style.
+        base_dir: Base directory for resolving relative image paths.
 
     Returns:
         (Document, CompatReport) tuple.
     """
+    md_text = _clean_text(md_text)
     tokens = parse_markdown(md_text)
+    _resolve_relative_image_sources(tokens, base_dir)
 
     template_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), "templates", f"{template_name}.docx"
@@ -390,7 +452,11 @@ def convert_md_to_docx(
     doc = Document(template_path)
     _clear_document_content(doc)
 
-    config = get_template(template_name)
+    config = build_effective_template(
+        template_name,
+        format_options,
+        three_line_override=three_line if three_line else None,
+    )
     compat_items: list[CompatItem] = []
     heading_paragraphs: list[tuple[int, object]] = []
     section_state = {"in_abstract": False, "in_references": False}
@@ -399,9 +465,7 @@ def convert_md_to_docx(
         if token.type == "heading":
             heading_text = token.content.strip()
             if not heading_text and token.children:
-                heading_text = " ".join(
-                    c.content for c in token.children if c.type == "text"
-                ).strip()
+                heading_text = tokens_to_plain_text(token.children).strip()
 
             if _is_toc_heading(heading_text):
                 section_state["in_abstract"] = False
@@ -441,7 +505,8 @@ def convert_md_to_docx(
             add_blockquote(doc, token, config)
 
         elif token.type == "code":
-            add_code_block(doc, token, config)
+            if not _add_diagram_block(doc, token, config):
+                add_code_block(doc, token, config)
 
         elif token.type == "image":
             add_image(doc, token, config)
@@ -491,3 +556,66 @@ def convert_md_to_docx(
 
     report = generate_compat_report(compat_items)
     return doc, report
+
+
+def convert_directory(input_dir, output_dir=None, template_name="academic",
+                      three_line=False, recursive=False):
+    """Batch convert all .md files in a directory to .docx.
+
+    Args:
+        input_dir: Directory containing .md files
+        output_dir: Output directory (defaults to input_dir)
+        template_name: Template to use for conversion
+        three_line: Use three-line table style
+        recursive: Search subdirectories recursively
+
+    Returns:
+        List of (input_path, output_path, success, error) tuples
+    """
+    import glob as glob_module
+
+    input_dir = os.path.abspath(input_dir)
+    if not os.path.isdir(input_dir):
+        raise NotADirectoryError(f"Not a directory: {input_dir}")
+
+    if output_dir is None:
+        output_dir = input_dir
+    output_dir = os.path.abspath(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+
+    pattern = os.path.join(input_dir, "**", "*.md") if recursive else os.path.join(input_dir, "*.md")
+    md_files = sorted(glob_module.glob(pattern, recursive=recursive))
+
+    if not md_files:
+        logger.warning(f"No .md files found in: {input_dir}")
+        return []
+
+    logger.info(f"Found {len(md_files)} markdown file(s)")
+
+    results = []
+    for md_file in md_files:
+        rel_path = os.path.relpath(md_file, input_dir)
+        out_path = os.path.join(output_dir, os.path.splitext(rel_path)[0] + ".docx")
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+
+        try:
+            with open(md_file, "r", encoding="utf-8") as f:
+                md_text = f.read()
+            doc, _ = convert_md_to_docx(
+                md_text,
+                template_name,
+                three_line,
+                base_dir=os.path.dirname(md_file),
+            )
+            doc.save(out_path)
+            results.append((md_file, out_path, True, None))
+            logger.info(f"Converted: {md_file} → {out_path}")
+        except Exception as e:
+            logger.error(f"Failed to convert {md_file}: {e}")
+            results.append((md_file, out_path, False, str(e)))
+
+    success = sum(1 for *_, ok, _ in results if ok)
+    failed = len(results) - success
+    logger.info(f"Conversion complete: {success} succeeded, {failed} failed")
+
+    return results
